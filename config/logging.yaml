@@ -1,0 +1,39 @@
+version: 1
+disable_existing_loggers: no
+
+formatters:
+    simple:
+        format: "%(asctime)s|%(filename)s:%(lineno)d|%(levelname)s- %(message)s"
+
+handlers:
+    console:
+        class: logging.StreamHandler
+        level: !ENV ${PISOLAR_LOG_LEVEL:DEBUG}
+        formatter: simple
+        stream: ext://sys.stdout
+
+    file:
+        class: logging.handlers.RotatingFileHandler
+        level: !ENV ${PISOLAR_LOG_LEVEL:DEBUG}
+        formatter: simple
+        filename: !ENV ${PISOLAR_LOG_FILE:./pisolar.log}
+        maxBytes: 2097152  # 2MB
+        backupCount: 10
+        encoding: utf8
+
+loggers:
+    pisolar:
+        level: !ENV ${PISOLAR_LOG_LEVEL:DEBUG}
+        handlers: [console, file]
+        propagate: no
+
+    # Suppress noisy third-party loggers
+    apscheduler:
+        level: WARNING
+
+    urllib3:
+        level: WARNING
+
+root:
+    level: !ENV ${PISOLAR_LOG_LEVEL:INFO}
+    handlers: [console]

@@ -1,0 +1,39 @@
+[Unit]
+Description=piSolar Monitoring Service
+Documentation=https://github.com/tim-oe/piSolar
+After=network.target bluetooth.target
+Wants=bluetooth.target
+
+[Service]
+Type=simple
+User=pisolar
+Group=pisolar
+
+# Configuration file locations
+Environment=PISOLAR_CONFIG=/etc/pisolar/config.yaml
+Environment=PISOLAR_LOGGING_CONFIG=/etc/pisolar/logging.yaml
+
+# Working directory
+WorkingDirectory=/opt/pisolar
+
+# Start command
+ExecStart=/opt/pisolar/.venv/bin/pisolar run
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pisolar
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/log/pisolar /var/lib/pisolar
+
+[Install]
+WantedBy=multi-user.target

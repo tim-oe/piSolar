@@ -1,0 +1,38 @@
+# piSolar Configuration
+#
+# Environment variable substitution using !ENV tag:
+# Example: enabled: !ENV ${PISOLAR_TEMPERATURE_ENABLED:true}
+#
+# Logging is configured separately in logging.yaml
+
+# Temperature sensor configuration (1-Wire sensors)
+# address: sensor_id without family prefix (e.g. 0000007c6850 for DS18B20)
+temperature:
+  enabled: !ENV ${PISOLAR_TEMPERATURE_ENABLED:true}
+  sensors:
+    - name: "temp 1"
+      address: "0000007c6850"
+    - name: "temp 2"
+      address: "000000b4c0d2"
+    - name: "temp 3"
+      address: "0000007b409e"
+    - name: "temp 4"
+      address: "0000007ba79d"
+  schedule:
+    # Cron expression: minute hour day month day_of_week
+    cron: !ENV ${PISOLAR_TEMPERATURE_CRON:*/5 * * * *}  # Every 5 minutes
+    enabled: !ENV ${PISOLAR_TEMPERATURE_SCHEDULE_ENABLED:true}
+
+# Renogy BT-2 Bluetooth module configuration
+renogy:
+  enabled: !ENV ${PISOLAR_RENOGY_ENABLED:true}
+  name: !ENV ${PISOLAR_RENOGY_NAME:time server}
+  mac_address: !ENV ${PISOLAR_RENOGY_MAC_ADDRESS:CC:45:A5:AB:F1:0E}  # Set to your BT-2 MAC address
+  device_alias: !ENV ${PISOLAR_RENOGY_DEVICE_ALIAS:BT-TH-A5ABF10E}
+  schedule:
+    cron: !ENV ${PISOLAR_RENOGY_CRON:*/5 * * * *}  # Every 5 minutes
+    enabled: !ENV ${PISOLAR_RENOGY_SCHEDULE_ENABLED:true}
+
+# Metrics output configuration
+metrics:
+  output_dir: !ENV ${PISOLAR_METRICS_OUTPUT_DIR:/var/lib/pisolar/metrics}
