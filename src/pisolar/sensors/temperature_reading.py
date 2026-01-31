@@ -13,10 +13,13 @@ class TemperatureReading(SensorReading):
 
     def to_dict(self) -> dict[str, Any]:
         """Convert reading to dictionary."""
-        return {
+        result = {
             "type": self.type,
             "name": self.name,
             "read_time": self.read_time.isoformat(),
             "value": self.value,
             "unit": self.unit,
         }
+        if self.read_duration_ms is not None:
+            result["read_duration_ms"] = self.read_duration_ms
+        return result

@@ -13,6 +13,10 @@ class SensorReading(BaseModel):
     type: str
     name: str
     read_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    read_duration_ms: float | None = Field(
+        default=None,
+        description="Time taken to read the sensor in milliseconds",
+    )
 
     @abstractmethod
     def to_dict(self) -> dict[str, Any]:

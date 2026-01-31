@@ -74,6 +74,9 @@ def run(ctx: click.Context) -> None:
         renogy_sensor = RenogySensor(
             mac_address=settings.renogy.mac_address,
             device_alias=settings.renogy.device_alias,
+            device_type=settings.renogy.device_type,
+            scan_timeout=settings.renogy.scan_timeout,
+            max_retries=settings.renogy.max_retries,
         )
 
         def read_renogy() -> None:
@@ -116,6 +119,9 @@ def check(ctx: click.Context) -> None:
         renogy_sensor = RenogySensor(
             mac_address=settings.renogy.mac_address,
             device_alias=settings.renogy.device_alias,
+            device_type=settings.renogy.device_type,
+            scan_timeout=settings.renogy.scan_timeout,
+            max_retries=settings.renogy.max_retries,
         )
         try:
             readings = renogy_sensor.read()
@@ -152,6 +158,9 @@ def read_once(ctx: click.Context) -> None:
         renogy_sensor = RenogySensor(
             mac_address=settings.renogy.mac_address,
             device_alias=settings.renogy.device_alias,
+            device_type=settings.renogy.device_type,
+            scan_timeout=settings.renogy.scan_timeout,
+            max_retries=settings.renogy.max_retries,
         )
         readings = renogy_sensor.read()
         all_readings.extend(readings)
@@ -181,6 +190,9 @@ def show_config(ctx: click.Context) -> None:
     click.echo("  Renogy sensor:")
     click.echo(f"    enabled: {settings.renogy.enabled}")
     click.echo(f"    mac_address: {settings.renogy.mac_address or '(not set)'}")
+    click.echo(f"    device_type: {settings.renogy.device_type}")
+    click.echo(f"    scan_timeout: {settings.renogy.scan_timeout}s")
+    click.echo(f"    max_retries: {settings.renogy.max_retries}")
     click.echo(f"    schedule: {settings.renogy.schedule.cron}")
     click.echo("  Metrics:")
     click.echo(f"    output_dir: {settings.metrics.output_dir}")

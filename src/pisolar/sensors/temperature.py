@@ -1,5 +1,7 @@
 """Temperature sensor implementation using w1thermsensor."""
 
+import time
+
 from w1thermsensor import Sensor, W1ThermSensor
 
 from pisolar.logging_config import get_logger
@@ -30,6 +32,7 @@ class TemperatureSensor(BaseSensor):
 
     def read(self) -> list[SensorReading]:
         """Read temperature from configured 1-Wire sensors."""
+        start_time = time.perf_counter()
         readings: list[SensorReading] = []
 
         available = {s.id: s for s in W1ThermSensor.get_available_sensors([Sensor.DS18B20])}
@@ -46,21 +49,31 @@ class TemperatureSensor(BaseSensor):
                     logger.warning("Sensor %s (%s) not found: %s", name, address, e)
                     continue
 
+            sensor_start = time.perf_counter()
             temp_celsius = sensor.get_temperature()
+            sensor_elapsed_ms = (time.perf_counter() - sensor_start) * 1000
 
             reading = TemperatureReading(
                 type=self.sensor_type,
                 name=name,
                 value=temp_celsius,
                 unit="celsius",
+                read_duration_ms=round(sensor_elapsed_ms, 1),
             )
             readings.append(reading)
             logger.debug(
-                "Temperature reading: name=%s, address=%s, value=%.2f°C",
+                "Temperature reading: name=%s, address=%s, value=%.2f°C, duration=%.1fms",
                 name,
                 address,
                 temp_celsius,
+                sensor_elapsed_ms,
             )
 
-        logger.info("Read %d temperature sensor(s)", len(readings))
+        elapsed_ms = (time.perf_counter() - start_time) * 1000
+        logger.info(
+            "Read %d temperature sensor(s) in %.1fms (%.1fms/sensor)",
+            len(readings),
+            elapsed_ms,
+            elapsed_ms / len(readings) if readings else 0,
+        )
         return readings

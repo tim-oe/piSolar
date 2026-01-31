@@ -51,11 +51,17 @@ class SolarReading(SensorReading):
         sensor_type: str,
         name: str,
         data: dict[str, Any],
+        read_duration_ms: float | None = None,
     ) -> "SolarReading":
         """Create a SolarReading from raw Renogy library data dict."""
         # Filter out internal fields (__device, __client, function)
         filtered = {k: v for k, v in data.items() if not k.startswith("_") and k != "function"}
-        return cls(type=sensor_type, name=name, **filtered)
+        return cls(
+            type=sensor_type,
+            name=name,
+            read_duration_ms=read_duration_ms,
+            **filtered,
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """Convert reading to dictionary, excluding None values."""

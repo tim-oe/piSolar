@@ -1,7 +1,7 @@
 """Tests for sensor modules."""
 
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 
@@ -9,7 +9,7 @@ from pisolar.sensors import BaseSensor, SensorReading
 from pisolar.sensors.temperature_reading import TemperatureReading
 from pisolar.sensors.solar_reading import SolarReading
 from pisolar.sensors.temperature import TemperatureSensor
-from pisolar.sensors.renogy import RenogySensor, _build_config, _bluetooth_available
+from pisolar.sensors.renogy import RenogySensor, _bluetooth_available
 
 from tests.fixtures import (
     RENOGY_RAW_DATA,
@@ -322,26 +322,22 @@ class TestRenogySensor:
         )
         assert sensor.sensor_type == "solar"
 
-    def test_build_config(self):
-        """Test building ConfigParser from parameters."""
-        with patch("pisolar.sensors.renogy._get_config_template") as mock_template:
-            from string import Template
-            mock_template.return_value = Template(
-                "[device]\nmac_addr = $mac_address\nalias = $device_alias\n"
-                "device_id = $device_id\nadapter = $adapter\n"
-            )
+    def test_sensor_with_device_type(self):
+        """Test sensor accepts device_type parameter."""
+        sensor = RenogySensor(
+            mac_address=RENOGY_CONFIG["mac_address"],
+            device_alias=RENOGY_CONFIG["device_alias"],
+            device_type="dcc",
+        )
+        assert sensor._device_type == "dcc"
 
-            config = _build_config(
-                mac_address="AA:BB:CC:DD:EE:FF",
-                device_alias="BT-TEST",
-                device_id=1,
-                adapter="hci0",
-            )
-
-            assert config["device"]["mac_addr"] == "AA:BB:CC:DD:EE:FF"
-            assert config["device"]["alias"] == "BT-TEST"
-            assert config["device"]["device_id"] == "1"
-            assert config["device"]["adapter"] == "hci0"
+    def test_mac_address_normalized(self):
+        """Test MAC address is normalized to uppercase."""
+        sensor = RenogySensor(
+            mac_address="aa:bb:cc:dd:ee:ff",
+            device_alias="test",
+        )
+        assert sensor._mac_address == "AA:BB:CC:DD:EE:FF"
 
     @patch("pisolar.sensors.renogy.Path")
     def test_bluetooth_available_with_adapter(self, mock_path_class):
@@ -364,45 +360,59 @@ class TestRenogySensor:
         assert result is True or result is False  # Just verify no exception
 
     @patch("pisolar.sensors.renogy._bluetooth_available")
-    @patch("pisolar.sensors.renogy._build_config")
-    def test_read_success(self, mock_build_config, mock_bt_available):
-        """Test successful read from Renogy sensor."""
-        import sys
-
+    @patch("bleak.BleakScanner")
+    @patch("renogy_ble.RenogyBLEDevice")
+    @patch("renogy_ble.RenogyBleClient")
+    def test_read_success(
+        self, mock_client_class, mock_device_class, mock_scanner_class, mock_bt_available
+    ):
+        """Test successful read from Renogy sensor using renogy-ble."""
         mock_bt_available.return_value = True
-        mock_config = MagicMock()
-        mock_build_config.return_value = mock_config
 
-        # Mock the RoverClient before import
-        mock_rover_client = MagicMock()
-        mock_renogybt = MagicMock()
+        # Mock the BLE device found by scanner
+        mock_ble_device = MagicMock()
+        mock_ble_device.name = "BT-TH-A5ABF10E"
 
-        def rover_init(config, on_data_callback=None, on_error_callback=None):
-            client = MagicMock()
+        # Mock scanner class method
+        mock_scanner_class.find_device_by_address = AsyncMock(return_value=mock_ble_device)
 
-            def start():
-                if on_data_callback:
-                    on_data_callback(client, RENOGY_RAW_DATA)
+        # Mock the renogy device wrapper
+        mock_renogy_device = MagicMock()
+        mock_device_class.return_value = mock_renogy_device
 
-            client.start = start
-            return client
+        # Create mock result with parsed data
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_result.error = None
+        mock_result.parsed_data = {
+            "model": "RNG-CTRL-RVR20",
+            "device_id": 1,
+            "battery_percentage": 100,
+            "battery_voltage": 13.2,
+            "battery_current": 0.0,
+            "battery_temperature": -10,
+            "controller_temperature": -5,
+            "load_status": "on",
+            "pv_voltage": 3.1,
+            "pv_power": 0,
+            "charging_status": "deactivated",
+            "battery_type": "lithium",
+        }
 
-        mock_renogybt.RoverClient = rover_init
-        sys.modules["renogybt"] = mock_renogybt
+        mock_client = MagicMock()
+        mock_client.read_device = AsyncMock(return_value=mock_result)
+        mock_client_class.return_value = mock_client
 
-        try:
-            sensor = RenogySensor(
-                mac_address=RENOGY_CONFIG["mac_address"],
-                device_alias=RENOGY_CONFIG["device_alias"],
-            )
-            readings = sensor.read()
+        sensor = RenogySensor(
+            mac_address=RENOGY_CONFIG["mac_address"],
+            device_alias=RENOGY_CONFIG["device_alias"],
+            max_retries=1,  # Speed up test
+        )
+        readings = sensor.read()
 
-            assert len(readings) == 1
-            assert readings[0].model == "RNG-CTRL-RVR20"
-            assert readings[0].battery_voltage == 13.2
-        finally:
-            # Clean up
-            del sys.modules["renogybt"]
+        assert len(readings) == 1
+        assert readings[0].model == "RNG-CTRL-RVR20"
+        assert readings[0].battery_voltage == 13.2
 
     @patch("pisolar.sensors.renogy._bluetooth_available")
     def test_read_no_bluetooth(self, mock_bt_available):
@@ -415,4 +425,94 @@ class TestRenogySensor:
         )
 
         with pytest.raises(RuntimeError, match="No powered Bluetooth adapter"):
+            sensor.read()
+
+    @patch("pisolar.sensors.renogy._bluetooth_available")
+    @patch("bleak.BleakScanner")
+    def test_read_device_not_found(self, mock_scanner_class, mock_bt_available):
+        """Test read fails when device not found during scan."""
+        mock_bt_available.return_value = True
+
+        # Mock scanner class method returning None for device
+        mock_scanner_class.find_device_by_address = AsyncMock(return_value=None)
+
+        sensor = RenogySensor(
+            mac_address=RENOGY_CONFIG["mac_address"],
+            device_alias=RENOGY_CONFIG["device_alias"],
+            max_retries=1,  # Speed up test
+        )
+
+        with pytest.raises(RuntimeError, match="Could not find Renogy device"):
+            sensor.read()
+
+    @patch("pisolar.sensors.renogy._bluetooth_available")
+    @patch("bleak.BleakScanner")
+    @patch("renogy_ble.RenogyBLEDevice")
+    @patch("renogy_ble.RenogyBleClient")
+    def test_read_ble_failure(
+        self, mock_client_class, mock_device_class, mock_scanner_class, mock_bt_available
+    ):
+        """Test read fails when BLE read fails."""
+        mock_bt_available.return_value = True
+
+        mock_ble_device = MagicMock()
+        mock_ble_device.name = "BT-TH-A5ABF10E"
+
+        # Mock scanner class method
+        mock_scanner_class.find_device_by_address = AsyncMock(return_value=mock_ble_device)
+
+        mock_device_class.return_value = MagicMock()
+
+        mock_result = MagicMock()
+        mock_result.success = False
+        mock_result.error = RuntimeError("Connection failed")
+        mock_result.parsed_data = {}
+
+        mock_client = MagicMock()
+        mock_client.read_device = AsyncMock(return_value=mock_result)
+        mock_client_class.return_value = mock_client
+
+        sensor = RenogySensor(
+            mac_address=RENOGY_CONFIG["mac_address"],
+            device_alias=RENOGY_CONFIG["device_alias"],
+            max_retries=1,  # Speed up test
+        )
+
+        with pytest.raises(RuntimeError, match="Failed to read from Renogy device"):
+            sensor.read()
+
+    @patch("pisolar.sensors.renogy._bluetooth_available")
+    @patch("bleak.BleakScanner")
+    @patch("renogy_ble.RenogyBLEDevice")
+    @patch("renogy_ble.RenogyBleClient")
+    def test_read_empty_data(
+        self, mock_client_class, mock_device_class, mock_scanner_class, mock_bt_available
+    ):
+        """Test read fails when device returns empty data."""
+        mock_bt_available.return_value = True
+
+        mock_ble_device = MagicMock()
+        mock_ble_device.name = "BT-TH-A5ABF10E"
+
+        # Mock scanner class method
+        mock_scanner_class.find_device_by_address = AsyncMock(return_value=mock_ble_device)
+
+        mock_device_class.return_value = MagicMock()
+
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_result.error = None
+        mock_result.parsed_data = {}  # Empty data
+
+        mock_client = MagicMock()
+        mock_client.read_device = AsyncMock(return_value=mock_result)
+        mock_client_class.return_value = mock_client
+
+        sensor = RenogySensor(
+            mac_address=RENOGY_CONFIG["mac_address"],
+            device_alias=RENOGY_CONFIG["device_alias"],
+            max_retries=1,  # Speed up test
+        )
+
+        with pytest.raises(RuntimeError, match="returned empty data"):
             sensor.read()

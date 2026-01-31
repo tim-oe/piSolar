@@ -29,6 +29,9 @@ renogy:
   name: !ENV ${PISOLAR_RENOGY_NAME:time server}
   mac_address: !ENV ${PISOLAR_RENOGY_MAC_ADDRESS:CC:45:A5:AB:F1:0E}  # Set to your BT-2 MAC address
   device_alias: !ENV ${PISOLAR_RENOGY_DEVICE_ALIAS:BT-TH-A5ABF10E}
+  device_type: !ENV ${PISOLAR_RENOGY_DEVICE_TYPE:controller}  # 'controller' or 'dcc'
+  scan_timeout: !ENV ${PISOLAR_RENOGY_SCAN_TIMEOUT:15.0}  # BLE scan timeout in seconds
+  max_retries: !ENV ${PISOLAR_RENOGY_MAX_RETRIES:3}  # Number of retry attempts on failure
   schedule:
     cron: !ENV ${PISOLAR_RENOGY_CRON:*/5 * * * *}  # Every 5 minutes
     enabled: !ENV ${PISOLAR_RENOGY_SCHEDULE_ENABLED:true}
