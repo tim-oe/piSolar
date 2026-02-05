@@ -6,10 +6,9 @@ from unittest.mock import MagicMock, patch, AsyncMock
 import pytest
 
 from pisolar.sensors import BaseSensor, SensorReading
-from pisolar.sensors.temperature_reading import TemperatureReading
-from pisolar.sensors.solar_reading import SolarReading
-from pisolar.sensors.temperature import TemperatureSensor
-from pisolar.sensors.renogy import RenogySensor, _bluetooth_available
+from pisolar.sensors.temperature import TemperatureReading, TemperatureSensor
+from pisolar.sensors.renogy import RenogySensor, SolarReading
+from pisolar.sensors.renogy.sensor import _bluetooth_available
 
 from tests.fixtures import (
     RENOGY_RAW_DATA,
@@ -254,7 +253,7 @@ class TestTemperatureSensor:
         sensor = TemperatureSensor(sensors=TEMPERATURE_SENSORS)
         assert sensor.sensor_type == "temperature"
 
-    @patch("pisolar.sensors.temperature.W1ThermSensor")
+    @patch("pisolar.sensors.temperature.sensor.W1ThermSensor")
     def test_read_sensors(self, mock_w1_class):
         """Test reading from multiple temperature sensors."""
         # Create mock sensor instances
@@ -278,7 +277,7 @@ class TestTemperatureSensor:
         assert readings[1].name == "temp 2"
         assert readings[1].value == 23.1
 
-    @patch("pisolar.sensors.temperature.W1ThermSensor")
+    @patch("pisolar.sensors.temperature.sensor.W1ThermSensor")
     def test_read_sensor_not_available(self, mock_w1_class):
         """Test handling when sensor is not found."""
         # No sensors available
@@ -292,7 +291,7 @@ class TestTemperatureSensor:
         # Should return empty list, not raise
         assert len(readings) == 0
 
-    @patch("pisolar.sensors.temperature.W1ThermSensor")
+    @patch("pisolar.sensors.temperature.sensor.W1ThermSensor")
     def test_read_mixed_available(self, mock_w1_class):
         """Test reading when some sensors available, some not."""
         mock_sensor = MagicMock()
@@ -339,7 +338,7 @@ class TestRenogySensor:
         )
         assert sensor._mac_address == "AA:BB:CC:DD:EE:FF"
 
-    @patch("pisolar.sensors.renogy.Path")
+    @patch("pisolar.sensors.renogy.sensor.Path")
     def test_bluetooth_available_with_adapter(self, mock_path_class):
         """Test _bluetooth_available returns True when adapter exists."""
         mock_bt_path = MagicMock()
@@ -353,13 +352,13 @@ class TestRenogySensor:
         mock_path_class.return_value = mock_bt_path
 
         # Need to reload to use fresh Path mock
-        from pisolar.sensors import renogy
-        result = renogy._bluetooth_available()
+        from pisolar.sensors.renogy import sensor as renogy_sensor
+        result = renogy_sensor._bluetooth_available()
 
         # The function uses Path("/sys/class/bluetooth"), mock it properly
         assert result is True or result is False  # Just verify no exception
 
-    @patch("pisolar.sensors.renogy._bluetooth_available")
+    @patch("pisolar.sensors.renogy.sensor._bluetooth_available")
     @patch("bleak.BleakScanner")
     @patch("renogy_ble.RenogyBLEDevice")
     @patch("renogy_ble.RenogyBleClient")
@@ -414,7 +413,7 @@ class TestRenogySensor:
         assert readings[0].model == "RNG-CTRL-RVR20"
         assert readings[0].battery_voltage == 13.2
 
-    @patch("pisolar.sensors.renogy._bluetooth_available")
+    @patch("pisolar.sensors.renogy.sensor._bluetooth_available")
     def test_read_no_bluetooth(self, mock_bt_available):
         """Test read fails gracefully when Bluetooth not available."""
         mock_bt_available.return_value = False
@@ -427,7 +426,7 @@ class TestRenogySensor:
         with pytest.raises(RuntimeError, match="No powered Bluetooth adapter"):
             sensor.read()
 
-    @patch("pisolar.sensors.renogy._bluetooth_available")
+    @patch("pisolar.sensors.renogy.sensor._bluetooth_available")
     @patch("bleak.BleakScanner")
     def test_read_device_not_found(self, mock_scanner_class, mock_bt_available):
         """Test read fails when device not found during scan."""
@@ -445,7 +444,7 @@ class TestRenogySensor:
         with pytest.raises(RuntimeError, match="Could not find Renogy device"):
             sensor.read()
 
-    @patch("pisolar.sensors.renogy._bluetooth_available")
+    @patch("pisolar.sensors.renogy.sensor._bluetooth_available")
     @patch("bleak.BleakScanner")
     @patch("renogy_ble.RenogyBLEDevice")
     @patch("renogy_ble.RenogyBleClient")
@@ -481,7 +480,7 @@ class TestRenogySensor:
         with pytest.raises(RuntimeError, match="Failed to read from Renogy device"):
             sensor.read()
 
-    @patch("pisolar.sensors.renogy._bluetooth_available")
+    @patch("pisolar.sensors.renogy.sensor._bluetooth_available")
     @patch("bleak.BleakScanner")
     @patch("renogy_ble.RenogyBLEDevice")
     @patch("renogy_ble.RenogyBleClient")

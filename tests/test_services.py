@@ -3,8 +3,8 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
-from pisolar.sensors.temperature_reading import TemperatureReading
-from pisolar.sensors.solar_reading import SolarReading
+from pisolar.sensors.temperature import TemperatureReading
+from pisolar.sensors.renogy import SolarReading
 from pisolar.services.metrics import MetricsService, SENSOR_READING_EVENT
 from pisolar.services.consumers import LoggingConsumer
 from pisolar.event_bus import EventBus

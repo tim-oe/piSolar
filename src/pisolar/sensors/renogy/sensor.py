@@ -8,8 +8,8 @@ from typing import Any, Literal
 from pisolar.config.renogy_config import DEFAULT_MAX_RETRIES, DEFAULT_SCAN_TIMEOUT
 from pisolar.logging_config import get_logger
 from pisolar.sensors.base_sensor import BaseSensor
+from pisolar.sensors.renogy.reading import SolarReading
 from pisolar.sensors.sensor_reading import SensorReading
-from pisolar.sensors.solar_reading import SolarReading
 
 logger = get_logger("sensors.renogy")
 

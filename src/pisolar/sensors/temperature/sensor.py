@@ -7,7 +7,7 @@ from w1thermsensor import Sensor, W1ThermSensor
 from pisolar.logging_config import get_logger
 from pisolar.sensors.base_sensor import BaseSensor
 from pisolar.sensors.sensor_reading import SensorReading
-from pisolar.sensors.temperature_reading import TemperatureReading
+from pisolar.sensors.temperature.reading import TemperatureReading
 
 logger = get_logger("sensors.temperature")
 
