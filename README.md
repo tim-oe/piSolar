@@ -19,47 +19,31 @@ Solar system monitoring service for Raspberry Pi. Collects metrics from temperat
 poetry install
 ```
 
-### Renogy BT-2 support (optional)
+## Hardware Setup
 
-For detailed Bluetooth setup instructions, see **[docs/BLUETOOTH_SETUP.md](docs/BLUETOOTH_SETUP.md)**.
+### Raspberry Pi Prerequisites
 
-**Quick start:**
+- **Bluetooth**: Enable Bluetooth on your Pi for BT-1/BT-2 modules.
+  See [Raspberry Pi Bluetooth documentation](https://www.raspberrypi.com/documentation/computers/configuration.html#bluetooth).
 
-1. Ensure Bluetooth is enabled and powered on:
-   ```bash
-   sudo systemctl enable bluetooth
-   sudo systemctl start bluetooth
-   sudo bluetoothctl power on
-   ```
+- **1-Wire**: Enable 1-Wire interface for DS18B20 temperature sensors.
+  See [Raspberry Pi 1-Wire documentation](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#one-wire).
 
-2. Clone the renogy-bt library:
-   ```bash
-   git clone https://github.com/cyrils/renogy-bt.git ~/src/renogy-bt
-   ```
+### Renogy Sensors
 
-3. Install its dependencies:
-   ```bash
-   poetry run pip install -r ~/src/renogy-bt/requirements.txt
-   ```
+Renogy charge controllers can be read via Bluetooth or Serial connections:
 
-4. Run pisolar with `PYTHONPATH`:
-   ```bash
-   PYTHONPATH=~/src/renogy-bt poetry run pisolar -c config/config.yaml -l config/logging.yaml read-once
-   ```
+| Connection | Module | Documentation |
+|------------|--------|---------------|
+| Bluetooth | BT-1/BT-2 | [docs/BLUETOOTH_SETUP.md](docs/BLUETOOTH_SETUP.md) |
+| RS232 | RJ12 cable | [docs/RS232.md](docs/RS232.md) |
+| RS485 | RJ45 cable | [docs/RS485.md](docs/RS485.md) |
+
+For Modbus protocol details, see [docs/rover_modbus.pdf](docs/rover_modbus.pdf).
 
 ## Configuration
 
-For detailed configuration options, see **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)**.
-
-**Quick start:**
-
-```bash
-sudo mkdir -p /etc/pisolar
-sudo cp config/config.yaml /etc/pisolar/config.yaml
-sudo cp config/logging.yaml /etc/pisolar/logging.yaml
-# Edit configs as needed, then test:
-pisolar -c /etc/pisolar/config.yaml -l /etc/pisolar/logging.yaml show-config
-```
+See **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)** for configuration options.
 
 ## Usage
 
@@ -76,39 +60,7 @@ pisolar -c config.yaml -l logging.yaml run  # Specify config files
 
 ## Systemd Service
 
-### Installation
-
-```bash
-# Create user and directories
-sudo useradd -r -s /bin/false pisolar
-sudo mkdir -p /opt/pisolar /var/log/pisolar /var/lib/pisolar /etc/pisolar
-sudo chown pisolar:pisolar /var/log/pisolar /var/lib/pisolar
-
-# Copy configuration
-sudo cp config/config.yaml /etc/pisolar/
-sudo cp config/logging.yaml /etc/pisolar/
-
-# Install the application
-cd /opt/pisolar
-sudo python -m venv .venv
-sudo .venv/bin/pip install /path/to/piSolar
-
-# Install service
-sudo cp systemd/pisolar.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable pisolar
-sudo systemctl start pisolar
-```
-
-### Service Commands
-
-```bash
-sudo systemctl status pisolar   # Check status
-sudo systemctl start pisolar    # Start service
-sudo systemctl stop pisolar     # Stop service
-sudo systemctl restart pisolar  # Restart service
-sudo journalctl -u pisolar -f   # View logs
-```
+To run piSolar as a system service, see **[docs/SYSTEMD.md](docs/SYSTEMD.md)**.
 
 ## Development Commands
 
@@ -131,62 +83,4 @@ poetry run pytest tests/test_pisolar.py::test_version  # Run a single test
 poetry run pytest -k "test_read"           # Run tests matching pattern
 poetry run pytest --cov                    # Run tests with coverage
 poetry run pytest --cov --cov-report=html  # Coverage with HTML report
-```
-
-### Code Formatting & Linting
-
-```bash
-# Combined targets (recommended)
-poetry run lint             # Check all style issues (fails if issues found)
-poetry run format           # Auto-fix formatting issues
-
-# Individual tools
-poetry run black src tests            # Format code with black
-poetry run isort src tests            # Sort imports with isort
-poetry run flake8 src tests           # Check style with flake8
-poetry run pylint src                 # Lint code with pylint
-```
-
-## Project Structure
-
-```
-piSolar/
-├── src/pisolar/
-│   ├── __init__.py
-│   ├── __main__.py           # Module entry point
-│   ├── cli.py                # CLI commands
-│   ├── event_bus.py          # Event publishing system
-│   ├── logging_config.py     # YAML logging with !ENV support
-│   ├── scheduler.py          # APScheduler wrapper
-│   ├── config/
-│   │   ├── settings.py       # Application settings
-│   │   ├── renogy_config.py  # Renogy sensor configuration
-│   │   └── ...               # Other config models
-│   ├── sensors/
-│   │   ├── base_sensor.py    # Base sensor class
-│   │   ├── renogy/
-│   │   │   ├── sensor.py           # Renogy sensor facade
-│   │   │   ├── bluetooth_reader.py # BT-1/BT-2 reader
-│   │   │   ├── modbus_reader.py    # RS232/RS485 Modbus reader
-│   │   │   └── reading.py          # SolarReading model
-│   │   └── temperature/
-│   │       ├── sensor.py     # 1-Wire temperature sensors
-│   │       └── reading.py    # TemperatureReading model
-│   └── services/
-│       ├── metrics.py        # Metrics recording
-│       └── consumers.py      # Event consumers
-├── tests/                    # Test files mirror src/ structure
-│   ├── config/
-│   ├── sensors/
-│   │   ├── renogy/
-│   │   └── temperature/
-│   └── services/
-├── scripts/
-│   └── lint.py               # Linting script for poetry run targets
-├── config/
-│   ├── config.yaml           # Application configuration
-│   └── logging.yaml          # Logging configuration
-├── systemd/
-│   └── pisolar.service       # Systemd unit file
-└── pyproject.toml
 ```

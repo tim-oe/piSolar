@@ -2,15 +2,23 @@
 
 This document describes how to configure piSolar for your environment.
 
-## Quick Start
+## Configuration Files
 
-Copy the sample configs and customize:
+piSolar uses two configuration files:
+
+- `config.yaml` - Application settings (sensors, schedules, metrics)
+- `logging.yaml` - Python logging configuration
+
+**Development (from source tree):**
 
 ```bash
-sudo mkdir -p /etc/pisolar
-sudo cp config/config.yaml /etc/pisolar/config.yaml
-sudo cp config/logging.yaml /etc/pisolar/logging.yaml
+# Use configs directly from the project
+poetry run pisolar -c config/config.yaml -l config/logging.yaml show-config
 ```
+
+**Production (systemd service):**
+
+See [SYSTEMD.md](SYSTEMD.md) for deploying configs to `/etc/pisolar/`.
 
 ## Application Configuration
 
