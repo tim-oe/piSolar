@@ -1,4 +1,4 @@
-"""Tests for configuration module."""
+"""Tests for Settings class."""
 
 from pathlib import Path
 
@@ -73,11 +73,18 @@ temperature:
         assert settings.temperature.schedule.enabled is True
 
     def test_renogy_config(self, tmp_path: Path):
-        """Test Renogy configuration."""
+        """Test Renogy configuration with multiple sensors."""
         config_content = """
 renogy:
   enabled: true
-  mac_address: "AA:BB:CC:DD:EE:FF"
+  sensors:
+    - name: rover
+      read_type: bt
+      mac_address: "AA:BB:CC:DD:EE:FF"
+      device_alias: "BT-TH-TEST"
+    - name: wanderer
+      read_type: serial
+      device_path: "/dev/ttyUSB0"
 """
         config_file = tmp_path / "config.yaml"
         config_file.write_text(config_content)
@@ -85,5 +92,10 @@ renogy:
         settings = Settings.from_yaml(str(config_file))
 
         assert settings.renogy.enabled is True
-        assert settings.renogy.mac_address == "AA:BB:CC:DD:EE:FF"
-        assert settings.renogy.device_alias == "BT-2"
+        assert len(settings.renogy.sensors) == 2
+        assert settings.renogy.sensors[0].name == "rover"
+        assert settings.renogy.sensors[0].read_type == "bt"
+        assert settings.renogy.sensors[0].mac_address == "AA:BB:CC:DD:EE:FF"
+        assert settings.renogy.sensors[1].name == "wanderer"
+        assert settings.renogy.sensors[1].read_type == "serial"
+        assert settings.renogy.sensors[1].device_path == "/dev/ttyUSB0"

@@ -1,8 +1,7 @@
 """Application settings with YAML and environment variable support."""
 
-from pydantic import BaseModel, Field
-
 from pyaml_env import parse_config
+from pydantic import BaseModel, Field
 
 from pisolar.config.metrics_config import MetricsConfig
 from pisolar.config.renogy_config import RenogyConfig

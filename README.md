@@ -5,10 +5,12 @@ Solar system monitoring service for Raspberry Pi. Collects metrics from temperat
 ## Features
 
 - **Temperature Sensors**: Reads 1-Wire temperature sensors via `w1thermsensor`
-- **Renogy BT-2**: Reads solar charge controller data via Bluetooth
+- **Renogy Bluetooth**: Reads solar charge controller data via BT-1/BT-2 modules
+- **Renogy Serial**: Reads solar charge controller data via RS232/RS485 Modbus
 - **Cron Scheduling**: Configurable schedules using cron syntax
 - **YAML Configuration**: Config files with environment variable overrides
 - **External Logging Config**: Python logging dictConfig from YAML with `!ENV` tag support
+- **Event-Driven Architecture**: Pluggable consumers via event bus
 - **Systemd Service**: Run as a system service
 
 ## Installation
@@ -47,60 +49,16 @@ For detailed Bluetooth setup instructions, see **[docs/BLUETOOTH_SETUP.md](docs/
 
 ## Configuration
 
-Copy the sample configs and customize:
+For detailed configuration options, see **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)**.
+
+**Quick start:**
 
 ```bash
 sudo mkdir -p /etc/pisolar
 sudo cp config/config.yaml /etc/pisolar/config.yaml
 sudo cp config/logging.yaml /etc/pisolar/logging.yaml
-```
-
-### Application Configuration
-
-The main config file (`config.yaml`) controls sensors and metrics. Use `!ENV ${VAR:default}` for environment variable substitution:
-
-```yaml
-temperature:
-  enabled: !ENV ${PISOLAR_TEMPERATURE_ENABLED:true}
-  schedule:
-    cron: !ENV ${PISOLAR_TEMPERATURE_CRON:"*/5 * * * *"}
-
-renogy:
-  enabled: !ENV ${PISOLAR_RENOGY_ENABLED:false}
-  mac_address: !ENV ${PISOLAR_RENOGY_MAC_ADDRESS:""}
-
-metrics:
-  output_dir: !ENV ${PISOLAR_METRICS_OUTPUT_DIR:/var/lib/pisolar/metrics}
-```
-
-### Logging Configuration
-
-Logging is configured separately in `logging.yaml` using Python's dictConfig format with `!ENV` tag for environment variable substitution:
-
-```yaml
-handlers:
-  file:
-    level: !ENV ${PISOLAR_LOG_LEVEL:DEBUG}
-    filename: !ENV ${PISOLAR_LOG_FILE:./pisolar.log}
-```
-
-See [WeatherWatch logging.yml](https://github.com/tim-oe/WeatherWatch/blob/main/config/logging.yml) for reference.
-
-### Environment Variables
-
-Environment variables are substituted in YAML files using the `!ENV ${VAR:default}` syntax:
-
-```bash
-export PISOLAR_TEMPERATURE_ENABLED=false
-export PISOLAR_RENOGY_MAC_ADDRESS="AA:BB:CC:DD:EE:FF"
-export PISOLAR_METRICS_OUTPUT_DIR="/custom/path"
-```
-
-Logging settings (used via `!ENV` in logging.yaml):
-
-```bash
-export PISOLAR_LOG_LEVEL=DEBUG
-export PISOLAR_LOG_FILE=/var/log/pisolar/pisolar.log
+# Edit configs as needed, then test:
+pisolar -c /etc/pisolar/config.yaml -l /etc/pisolar/logging.yaml show-config
 ```
 
 ## Usage
@@ -154,28 +112,39 @@ sudo journalctl -u pisolar -f   # View logs
 
 ## Development Commands
 
+### Poetry Run Targets
+
+The project provides convenient run targets for common tasks:
+
+```bash
+poetry run pisolar          # Run the pisolar CLI
+poetry run lint             # Check code style (isort, black, flake8)
+poetry run format           # Auto-fix code formatting (isort, black)
+```
+
 ### Testing
 
 ```bash
 poetry run pytest                          # Run all tests
 poetry run pytest tests/test_pisolar.py    # Run a single test file
 poetry run pytest tests/test_pisolar.py::test_version  # Run a single test
+poetry run pytest -k "test_read"           # Run tests matching pattern
 poetry run pytest --cov                    # Run tests with coverage
 poetry run pytest --cov --cov-report=html  # Coverage with HTML report
 ```
 
-### Code Formatting
+### Code Formatting & Linting
 
 ```bash
-poetry run black src tests            # Format code
-poetry run isort src tests            # Sort imports
-```
+# Combined targets (recommended)
+poetry run lint             # Check all style issues (fails if issues found)
+poetry run format           # Auto-fix formatting issues
 
-### Linting
-
-```bash
-poetry run pylint src                 # Lint code
-poetry run flake8 src tests           # Flake8 checks
+# Individual tools
+poetry run black src tests            # Format code with black
+poetry run isort src tests            # Sort imports with isort
+poetry run flake8 src tests           # Check style with flake8
+poetry run pylint src                 # Lint code with pylint
 ```
 
 ## Project Structure
@@ -184,22 +153,40 @@ poetry run flake8 src tests           # Flake8 checks
 piSolar/
 ├── src/pisolar/
 │   ├── __init__.py
-│   ├── __main__.py         # Module entry point
-│   ├── cli.py              # CLI commands
-│   ├── config.py           # Application configuration
-│   ├── logging_config.py   # YAML logging with !ENV support
-│   ├── scheduler.py        # APScheduler wrapper
+│   ├── __main__.py           # Module entry point
+│   ├── cli.py                # CLI commands
+│   ├── event_bus.py          # Event publishing system
+│   ├── logging_config.py     # YAML logging with !ENV support
+│   ├── scheduler.py          # APScheduler wrapper
+│   ├── config/
+│   │   ├── settings.py       # Application settings
+│   │   ├── renogy_config.py  # Renogy sensor configuration
+│   │   └── ...               # Other config models
 │   ├── sensors/
-│   │   ├── base.py         # Base sensor class
-│   │   ├── temperature.py  # 1-Wire temperature sensors
-│   │   └── renogy.py       # Renogy BT-2 integration
+│   │   ├── base_sensor.py    # Base sensor class
+│   │   ├── renogy/
+│   │   │   ├── sensor.py           # Renogy sensor facade
+│   │   │   ├── bluetooth_reader.py # BT-1/BT-2 reader
+│   │   │   ├── modbus_reader.py    # RS232/RS485 Modbus reader
+│   │   │   └── reading.py          # SolarReading model
+│   │   └── temperature/
+│   │       ├── sensor.py     # 1-Wire temperature sensors
+│   │       └── reading.py    # TemperatureReading model
 │   └── services/
-│       └── metrics.py      # Metrics recording
-├── tests/
+│       ├── metrics.py        # Metrics recording
+│       └── consumers.py      # Event consumers
+├── tests/                    # Test files mirror src/ structure
+│   ├── config/
+│   ├── sensors/
+│   │   ├── renogy/
+│   │   └── temperature/
+│   └── services/
+├── scripts/
+│   └── lint.py               # Linting script for poetry run targets
 ├── config/
-│   ├── config.yaml         # Application configuration
-│   └── logging.yaml        # Logging configuration
+│   ├── config.yaml           # Application configuration
+│   └── logging.yaml          # Logging configuration
 ├── systemd/
-│   └── pisolar.service     # Systemd unit file
+│   └── pisolar.service       # Systemd unit file
 └── pyproject.toml
 ```

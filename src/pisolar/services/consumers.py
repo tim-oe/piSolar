@@ -1,9 +1,9 @@
 """Event consumers for sensor readings."""
 
 from pisolar.event_bus import get_event_bus
-from pisolar.services.metrics import SENSOR_READING_EVENT
 from pisolar.logging_config import get_logger
 from pisolar.sensors.sensor_reading import SensorReading
+from pisolar.services.metrics import SENSOR_READING_EVENT
 
 logger = get_logger("services.consumers")
 

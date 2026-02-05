@@ -1,12 +1,11 @@
 """Tests for CLI module."""
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 from click.testing import CliRunner
 
-from pisolar.cli import main, DEFAULT_CONFIG, DEFAULT_LOG_CONFIG
+from pisolar.cli import main
 
 
 @pytest.fixture
@@ -19,7 +18,8 @@ def runner():
 def config_files(tmp_path):
     """Create temporary config files for testing."""
     config = tmp_path / "config.yaml"
-    config.write_text("""
+    config.write_text(
+        """
 temperature:
   enabled: true
   sensors:
@@ -39,10 +39,12 @@ renogy:
 
 metrics:
   output_dir: /tmp/pisolar_test
-""")
+"""
+    )
 
     log_config = tmp_path / "logging.yaml"
-    log_config.write_text("""
+    log_config.write_text(
+        """
 version: 1
 disable_existing_loggers: false
 handlers:
@@ -53,7 +55,8 @@ handlers:
 root:
   level: DEBUG
   handlers: [console]
-""")
+"""
+    )
 
     return {"config": str(config), "log_config": str(log_config)}
 
@@ -87,7 +90,13 @@ class TestShowConfigCommand:
         """Test show-config displays configuration."""
         result = runner.invoke(
             main,
-            ["-c", config_files["config"], "-l", config_files["log_config"], "show-config"],
+            [
+                "-c",
+                config_files["config"],
+                "-l",
+                config_files["log_config"],
+                "show-config",
+            ],
         )
 
         assert result.exit_code == 0
@@ -95,7 +104,7 @@ class TestShowConfigCommand:
         assert "Temperature sensor:" in result.output
         assert "enabled: True" in result.output
         assert "test_sensor" in result.output
-        assert "Renogy sensor:" in result.output
+        assert "Renogy sensors:" in result.output
 
 
 class TestCheckCommand:
@@ -151,7 +160,13 @@ class TestReadOnceCommand:
 
         result = runner.invoke(
             main,
-            ["-c", config_files["config"], "-l", config_files["log_config"], "read-once"],
+            [
+                "-c",
+                config_files["config"],
+                "-l",
+                config_files["log_config"],
+                "read-once",
+            ],
         )
 
         assert result.exit_code == 0
@@ -173,12 +188,14 @@ class TestReadOnceCommand:
         )
 
         mock_sensor = MagicMock()
+        mock_sensor.name = "BT-TH-A5ABF10E"
         mock_sensor.read.return_value = [mock_reading]
         mock_renogy_class.return_value = mock_sensor
 
-        # Config with Renogy enabled
+        # Config with Renogy enabled (new format with sensors list)
         config = tmp_path / "config.yaml"
-        config.write_text("""
+        config.write_text(
+            """
 temperature:
   enabled: false
   sensors: []
@@ -188,18 +205,23 @@ temperature:
 
 renogy:
   enabled: true
-  mac_address: "CC:45:A5:AB:F1:0E"
-  device_alias: "BT-TH-A5ABF10E"
+  sensors:
+    - name: BT-TH-A5ABF10E
+      read_type: bt
+      mac_address: "CC:45:A5:AB:F1:0E"
+      device_alias: "BT-TH-A5ABF10E"
   schedule:
     cron: "*/5 * * * *"
     enabled: false
 
 metrics:
   output_dir: /tmp/pisolar_test
-""")
+"""
+        )
 
         log_config = tmp_path / "logging.yaml"
-        log_config.write_text("""
+        log_config.write_text(
+            """
 version: 1
 disable_existing_loggers: false
 handlers:
@@ -210,7 +232,8 @@ handlers:
 root:
   level: DEBUG
   handlers: [console]
-""")
+"""
+        )
 
         result = runner.invoke(
             main,
@@ -219,15 +242,17 @@ root:
 
         assert result.exit_code == 0
         assert "Reading sensors..." in result.output
-        assert "[solar] BT-TH-A5ABF10E:" in result.output
-        assert "battery_voltage" in result.output
-        assert "13.2" in result.output
+        assert "[solar/bt] BT-TH-A5ABF10E:" in result.output
+        assert "Battery Percentage: 100" in result.output
+        assert "Battery Voltage: 13.2" in result.output
+        assert "Charging Status: deactivated" in result.output
         assert "Total: 1 readings" in result.output
 
     def test_read_once_no_sensors_enabled(self, runner, tmp_path):
         """Test read-once with no sensors enabled."""
         config = tmp_path / "config.yaml"
-        config.write_text("""
+        config.write_text(
+            """
 temperature:
   enabled: false
   sensors: []
@@ -245,10 +270,12 @@ renogy:
 
 metrics:
   output_dir: /tmp/pisolar_test
-""")
+"""
+        )
 
         log_config = tmp_path / "logging.yaml"
-        log_config.write_text("""
+        log_config.write_text(
+            """
 version: 1
 disable_existing_loggers: false
 handlers:
@@ -259,7 +286,8 @@ handlers:
 root:
   level: DEBUG
   handlers: [console]
-""")
+"""
+        )
 
         result = runner.invoke(
             main,
@@ -286,7 +314,7 @@ class TestRunCommand:
         # Make scheduler.start() raise KeyboardInterrupt to exit
         mock_scheduler.start.side_effect = KeyboardInterrupt()
 
-        result = runner.invoke(
+        runner.invoke(
             main,
             ["-c", config_files["config"], "-l", config_files["log_config"], "run"],
             catch_exceptions=False,

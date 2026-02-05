@@ -14,6 +14,8 @@ dependencies = [
     "click (>=8.1.0,<9.0.0)",
     "pydantic (>=2.9.0,<3.0.0)",
     "renogy-ble (>=1.2.0,<2.0.0)",
+    "pymodbus (>=3.6.0,<4.0.0)",
+    "pyserial (>=3.5,<4.0.0)",
 ]
 
 [tool.poetry.dependencies]
@@ -27,6 +29,8 @@ packages = [{include = "pisolar", from = "src"}]
 
 [tool.poetry.scripts]
 pisolar = "pisolar.cli:main"
+lint = "scripts.lint:main"
+format = "scripts.lint:format_code"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -70,6 +74,22 @@ max-line-length = 88
 
 [tool.pylint.spelling]
 spelling-dict = "en_US"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.13"
+include = ["src"]
+exclude = ["**/__pycache__"]
+typeCheckingMode = "basic"
+
+[tool.basedpyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.13"
+include = ["src"]
+exclude = ["**/__pycache__"]
+typeCheckingMode = "basic"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

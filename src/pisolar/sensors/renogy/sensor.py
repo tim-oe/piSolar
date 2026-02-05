@@ -1,101 +1,118 @@
-"""Renogy BT-2 sensor implementation using renogy-ble library."""
+"""Renogy sensor implementation with pluggable readers (Bluetooth/Modbus)."""
 
 import asyncio
 import time
-from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Union
 
-from pisolar.config.renogy_config import DEFAULT_MAX_RETRIES, DEFAULT_SCAN_TIMEOUT
+from pisolar.config.renogy_config import (
+    RenogyBluetoothSensorConfig,
+    RenogySerialSensorConfig,
+)
 from pisolar.logging_config import get_logger
 from pisolar.sensors.base_sensor import BaseSensor
+from pisolar.sensors.renogy.reader import RenogyReader
 from pisolar.sensors.renogy.reading import SolarReading
 from pisolar.sensors.sensor_reading import SensorReading
 
 logger = get_logger("sensors.renogy")
 
-# Supported device types from renogy-ble
-DeviceType = Literal["controller", "dcc"]
-
-# Delay between retry attempts (not configurable, internal constant)
-_RETRY_DELAY = 2.0  # seconds between retries
+# Type alias for sensor config union
+RenogySensorConfig = Union[RenogyBluetoothSensorConfig, RenogySerialSensorConfig]
 
 
-def _bluetooth_available() -> bool:
-    """Return True if a Bluetooth adapter is present (Linux sysfs), or on non-Linux."""
-    bt = Path("/sys/class/bluetooth")
-    if not bt.exists():
-        return True  # non-Linux or no sysfs; let the library handle it
-    for adapter in bt.iterdir():
-        if adapter.is_dir() and adapter.name.startswith("hci"):
-            return True
-    return False
+def create_reader(config: RenogySensorConfig) -> RenogyReader:
+    """Create the appropriate reader based on sensor configuration.
+
+    Args:
+        config: Sensor configuration (Bluetooth or Serial)
+
+    Returns:
+        Configured RenogyReader instance
+
+    Raises:
+        ValueError: If read_type is not supported
+    """
+    if config.read_type == "bt":
+        from pisolar.sensors.renogy.bluetooth_reader import BluetoothReader
+
+        return BluetoothReader(
+            mac_address=config.mac_address,
+            device_alias=config.device_alias,
+            device_type=config.device_type,
+            scan_timeout=config.scan_timeout,
+            max_retries=config.max_retries,
+        )
+    elif config.read_type == "serial":
+        from pisolar.sensors.renogy.modbus_reader import ModbusReader
+
+        return ModbusReader(
+            device_path=config.device_path,
+            device_name=config.name,
+            device_type=config.device_type,
+            baud_rate=config.baud_rate,
+            slave_address=config.slave_address,
+            max_retries=config.max_retries,
+        )
+    else:
+        raise ValueError(f"Unsupported read_type: {config.read_type}")
 
 
 class RenogySensor(BaseSensor):
-    """Renogy BT-2 Bluetooth module sensor using renogy-ble library."""
+    """Renogy sensor with pluggable reader (Bluetooth or Modbus/Serial)."""
 
-    def __init__(
-        self,
-        mac_address: str,
-        device_alias: str = "BT-2",
-        device_type: DeviceType = "controller",
-        scan_timeout: float = DEFAULT_SCAN_TIMEOUT,
-        max_retries: int = DEFAULT_MAX_RETRIES,
-    ) -> None:
-        """
-        Initialize the Renogy sensor.
+    def __init__(self, config: RenogySensorConfig) -> None:
+        """Initialize the Renogy sensor.
 
         Args:
-            mac_address: Bluetooth MAC address of the BT-2 module
-            device_alias: Friendly name for the device
-            device_type: Device type - "controller" for solar charge controllers,
-                        "dcc" for DC-DC chargers
-            scan_timeout: Timeout in seconds for BLE scanning
-            max_retries: Number of full scan+connect retry attempts
+            config: Sensor configuration (Bluetooth or Serial)
         """
-        self._mac_address = mac_address.upper()
-        self._device_alias = device_alias
-        self._device_type: DeviceType = device_type
-        self._scan_timeout = scan_timeout
-        self._max_retries = max_retries
+        self._config = config
+        self._reader = create_reader(config)
 
     @property
     def sensor_type(self) -> str:
         """Return the sensor type identifier."""
         return "solar"
 
+    @property
+    def name(self) -> str:
+        """Return the sensor name."""
+        return self._config.name
+
     def read(self) -> list[SensorReading]:
-        """Read data from the Renogy BT-2 module."""
+        """Read data from the Renogy device.
+
+        Returns:
+            List containing a single SolarReading with device data.
+
+        Raises:
+            RuntimeError: If the read fails after retries.
+        """
         start_time = time.perf_counter()
 
-        if not _bluetooth_available():
-            raise RuntimeError(
-                "No powered Bluetooth adapter found. Turn on Bluetooth and try again."
-            )
-
-        # Run the async read in a new event loop
         try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
+            # Run the async read
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
 
-        try:
             if loop is not None:
-                # Already in an async context - use nest_asyncio or run in executor
-                # For simplicity, create a new thread with its own event loop
+                # Already in an async context - run in executor
                 import concurrent.futures
 
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     future = executor.submit(self._read_sync)
-                    return future.result(timeout=30.0)
+                    return future.result(timeout=60.0)
             else:
                 return asyncio.run(self._read_async())
         finally:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
-            logger.info(
-                "Total Renogy read time: %.1fms for %s",
+            logger.debug(
+                "Total Renogy read time: %.1fms for %s (%s)",
                 elapsed_ms,
-                self._device_alias,
+                self._reader.device_name,
+                self._reader.connection_type,
             )
 
     def _read_sync(self) -> list[SensorReading]:
@@ -103,119 +120,60 @@ class RenogySensor(BaseSensor):
         return asyncio.run(self._read_async())
 
     async def _read_async(self) -> list[SensorReading]:
-        """Async implementation of read using renogy-ble."""
-        from bleak import BleakScanner
-        from renogy_ble import RenogyBleClient, RenogyBLEDevice
+        """Async implementation of read using the configured reader."""
+        start_time = time.perf_counter()
 
-        last_error: Exception | None = None
-
-        for attempt in range(1, self._max_retries + 1):
-            try:
-                result = await self._attempt_read(BleakScanner, RenogyBleClient, RenogyBLEDevice)
-                return result
-            except Exception as e:
-                last_error = e
-                if attempt < self._max_retries:
-                    logger.warning(
-                        "Attempt %d/%d failed for %s: %s. Retrying in %.1fs...",
-                        attempt,
-                        self._max_retries,
-                        self._device_alias,
-                        str(e),
-                        _RETRY_DELAY,
-                    )
-                    await asyncio.sleep(_RETRY_DELAY)
-                else:
-                    logger.error(
-                        "All %d attempts failed for %s",
-                        self._max_retries,
-                        self._device_alias,
-                    )
-
-        raise RuntimeError(
-            f"Failed to read from Renogy device after {self._max_retries} attempts: "
-            f"{last_error}"
-        )
-
-    async def _attempt_read(
-        self,
-        scanner_class: type,
-        client_class: type,
-        device_class: type,
-    ) -> list[SensorReading]:
-        """Single attempt to scan and read from the device."""
-        attempt_start = time.perf_counter()
-
-        logger.debug(
-            "Scanning for Renogy device %s (timeout: %.1fs)...",
-            self._mac_address,
-            self._scan_timeout,
-        )
-
-        # Use class method directly - more reliable than context manager
-        # which can conflict with other scans in progress
-        device = await scanner_class.find_device_by_address(
-            self._mac_address,
-            timeout=self._scan_timeout,
-        )
-
-        scan_elapsed_ms = (time.perf_counter() - attempt_start) * 1000
-
-        if device is None:
-            logger.debug("Scan completed in %.1fms - device not found", scan_elapsed_ms)
-            raise RuntimeError(
-                f"Could not find Renogy device with MAC address {self._mac_address}. "
-                "Ensure the device is powered on and in range."
+        try:
+            data = await self._reader.read()
+        except Exception as e:
+            logger.error(
+                "Failed to read from %s (%s): %s",
+                self._reader.device_name,
+                self._reader.connection_type,
+                e,
             )
+            raise
 
-        logger.debug("Found device: %s (scan: %.1fms)", device.name, scan_elapsed_ms)
+        total_elapsed_ms = (time.perf_counter() - start_time) * 1000
 
-        # Create renogy-ble device wrapper
-        renogy_device = device_class(
-            ble_device=device,
-            advertisement_rssi=None,
-            device_type=self._device_type,
-        )
-
-        # Create client and read - bleak-retry-connector handles connection retries
-        connect_start = time.perf_counter()
-        client = client_class(max_attempts=5)
-        result = await client.read_device(renogy_device)
-        connect_elapsed_ms = (time.perf_counter() - connect_start) * 1000
-
-        # Total time for this attempt
-        total_elapsed_ms = (time.perf_counter() - attempt_start) * 1000
-
-        if not result.success:
-            error_msg = str(result.error) if result.error else "Unknown error"
-            raise RuntimeError(f"BLE read failed: {error_msg}")
-
-        # Validate we got meaningful data
-        if not result.parsed_data:
-            raise RuntimeError(
-                "Renogy device returned empty data. "
-                "Check device connection and try again."
-            )
-
-        # Add device metadata
-        data: dict[str, Any] = dict(result.parsed_data)
-        data["__device"] = self._device_alias
-        data["__client"] = "RenogyBleClient"
+        # Get timing from reader metadata if available
+        read_duration = data.get("__total_ms", round(total_elapsed_ms, 1))
 
         reading = SolarReading.from_raw_data(
             sensor_type=self.sensor_type,
-            name=self._device_alias,
+            name=self._reader.device_name,
             data=data,
-            read_duration_ms=round(total_elapsed_ms, 1),
-        )
-
-        logger.info(
-            "Read %d field(s) from %s (scan: %.1fms, connect+read: %.1fms, total: %.1fms)",
-            len(result.parsed_data),
-            self._device_alias,
-            scan_elapsed_ms,
-            connect_elapsed_ms,
-            total_elapsed_ms,
+            read_duration_ms=read_duration,
         )
 
         return [reading]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return sensor configuration as dictionary."""
+        result = {
+            "name": self._config.name,
+            "type": self.sensor_type,
+            "connection": self._reader.connection_type,
+        }
+
+        if self._config.read_type == "bt":
+            result["mac_address"] = self._config.mac_address
+        else:
+            result["device_path"] = self._config.device_path
+
+        return result
+
+    def connect(self) -> bool:
+        """Test connection to the device.
+
+        Returns:
+            True if connection succeeds.
+        """
+        # For Bluetooth, we don't maintain persistent connections
+        # For Modbus, we could add a test read here
+        return True
+
+    def close(self) -> None:
+        """Clean up reader resources."""
+        if self._reader:
+            self._reader.close()

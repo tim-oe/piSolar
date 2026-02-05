@@ -3,6 +3,11 @@
 import time
 
 from w1thermsensor import Sensor, W1ThermSensor
+from w1thermsensor.errors import (
+    ResetValueError,
+    SensorNotReadyError,
+    W1ThermSensorError,
+)
 
 from pisolar.logging_config import get_logger
 from pisolar.sensors.base_sensor import BaseSensor
@@ -35,7 +40,9 @@ class TemperatureSensor(BaseSensor):
         start_time = time.perf_counter()
         readings: list[SensorReading] = []
 
-        available = {s.id: s for s in W1ThermSensor.get_available_sensors([Sensor.DS18B20])}
+        available = {
+            s.id: s for s in W1ThermSensor.get_available_sensors([Sensor.DS18B20])
+        }
 
         for sensor_config in self._sensors:
             name = sensor_config["name"]
@@ -44,13 +51,39 @@ class TemperatureSensor(BaseSensor):
             sensor = available.get(address)
             if sensor is None:
                 try:
-                    sensor = W1ThermSensor(sensor_type=Sensor.DS18B20, sensor_id=address)
+                    sensor = W1ThermSensor(
+                        sensor_type=Sensor.DS18B20, sensor_id=address
+                    )
                 except Exception as e:
                     logger.warning("Sensor %s (%s) not found: %s", name, address, e)
                     continue
 
             sensor_start = time.perf_counter()
-            temp_celsius = sensor.get_temperature()
+            try:
+                temp_celsius = sensor.get_temperature()
+            except ResetValueError:
+                logger.warning(
+                    "Sensor %s (%s) returned reset value (85°C). "
+                    "Check power supply and wiring.",
+                    name,
+                    address,
+                )
+                continue
+            except SensorNotReadyError:
+                logger.warning(
+                    "Sensor %s (%s) not ready. Skipping this read.",
+                    name,
+                    address,
+                )
+                continue
+            except W1ThermSensorError as e:
+                logger.warning(
+                    "Sensor %s (%s) read error: %s",
+                    name,
+                    address,
+                    e,
+                )
+                continue
             sensor_elapsed_ms = (time.perf_counter() - sensor_start) * 1000
 
             reading = TemperatureReading(
@@ -62,7 +95,7 @@ class TemperatureSensor(BaseSensor):
             )
             readings.append(reading)
             logger.debug(
-                "Temperature reading: name=%s, address=%s, value=%.2f°C, duration=%.1fms",
+                "Temperature: %s (%s) = %.2fC in %.1fms",
                 name,
                 address,
                 temp_celsius,

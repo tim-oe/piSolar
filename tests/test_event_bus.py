@@ -1,7 +1,5 @@
 """Tests for event bus module."""
 
-import pytest
-
 from pisolar.event_bus import EventBus, get_event_bus
 
 

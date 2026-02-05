@@ -26,16 +26,23 @@ temperature:
 # Renogy BT-2 Bluetooth module configuration
 renogy:
   enabled: !ENV ${PISOLAR_RENOGY_ENABLED:true}
-  name: !ENV ${PISOLAR_RENOGY_NAME:time server}
-  mac_address: !ENV ${PISOLAR_RENOGY_MAC_ADDRESS:CC:45:A5:AB:F1:0E}  # Set to your BT-2 MAC address
-  device_alias: !ENV ${PISOLAR_RENOGY_DEVICE_ALIAS:BT-TH-A5ABF10E}
-  device_type: !ENV ${PISOLAR_RENOGY_DEVICE_TYPE:controller}  # 'controller' or 'dcc'
-  scan_timeout: !ENV ${PISOLAR_RENOGY_SCAN_TIMEOUT:15.0}  # BLE scan timeout in seconds
-  max_retries: !ENV ${PISOLAR_RENOGY_MAX_RETRIES:3}  # Number of retry attempts on failure
   schedule:
     cron: !ENV ${PISOLAR_RENOGY_CRON:*/5 * * * *}  # Every 5 minutes
     enabled: !ENV ${PISOLAR_RENOGY_SCHEDULE_ENABLED:true}
-
+  sensors:
+    - name: !ENV ${PISOLAR_RENOGY_NAME_1:rover}
+      read_type: !ENV ${PISOLAR_RENOGY_READ_TYPE_1:bt}  # 'controller' or 'dcc'
+      mac_address: !ENV ${PISOLAR_RENOGY_MAC_ADDRESS_1:CC:45:A5:AB:F1:0E}  # Set to your BT-2 MAC address
+      device_alias: !ENV ${PISOLAR_RENOGY_DEVICE_ALIAS_1:BT-TH-A5ABF10E}
+      device_type: !ENV ${PISOLAR_RENOGY_DEVICE_TYPE_1:rover}  # 'controller' or 'dcc'
+      scan_timeout: !ENV ${PISOLAR_RENOGY_SCAN_TIMEOUT_1:15.0}  # BLE scan timeout in seconds
+      max_retries: !ENV ${PISOLAR_RENOGY_MAX_RETRIES_1:3}  # Number of retry attempts on failure
+    - name: !ENV ${PISOLAR_RENOGY_NAME_2:wanderer}
+      read_type: !ENV ${PISOLAR_RENOGY_READ_TYPE_2:serial}  # 'controller' or 'dcc'
+      device_path: !ENV ${PISOLAR_RENOGY_DEVICE_PATH_2:/dev/ttyUSB0}  # Set to your BT-2 MAC address
+      scan_timeout: !ENV ${PISOLAR_RENOGY_SCAN_TIMEOUT_2:15.0}  # BLE scan timeout in seconds
+      max_retries: !ENV ${PISOLAR_RENOGY_MAX_RETRIES_2:3}  # Number of retry attempts on failure
+  
 # Metrics output configuration
 metrics:
   output_dir: !ENV ${PISOLAR_METRICS_OUTPUT_DIR:/var/lib/pisolar/metrics}

@@ -34,6 +34,12 @@ loggers:
     urllib3:
         level: WARNING
 
+    # bleak BLE connection cleanup warnings are benign (race condition in BlueZ D-Bus)
+    # "Failed to cancel connection" appears after successful reads - not a resource leak
+    # The renogy-ble library properly calls disconnect() in a finally block
+    bleak.backends.bluezdbus.client:
+        level: WARNING  # Keep at WARNING to see actual connection errors
+
 root:
     level: !ENV ${PISOLAR_LOG_LEVEL:INFO}
     handlers: [console]

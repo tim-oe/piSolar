@@ -1,5 +1,10 @@
 """Test fixtures with realistic data from live sensors."""
 
+from pisolar.config.renogy_config import (
+    RenogyBluetoothSensorConfig,
+    RenogySerialSensorConfig,
+)
+
 # Raw Renogy BT-2 sensor output (from RNG-CTRL-RVR20 charge controller)
 # Captured during low-light conditions (night/early morning)
 RENOGY_RAW_DATA = {
@@ -61,12 +66,30 @@ RENOGY_RAW_DATA_CHARGING = {
     "__client": "RoverClient",
 }
 
-# Renogy device configuration
-RENOGY_CONFIG = {
-    "mac_address": "CC:45:A5:AB:F1:0E",
-    "device_alias": "BT-TH-A5ABF10E",
-    "device_id": 255,
-}
+# Renogy Bluetooth sensor configuration
+RENOGY_BT_CONFIG = RenogyBluetoothSensorConfig(
+    name="rover",
+    read_type="bt",
+    mac_address="CC:45:A5:AB:F1:0E",
+    device_alias="BT-TH-A5ABF10E",
+    device_type="rover",
+    scan_timeout=15.0,
+    max_retries=3,
+)
+
+# Renogy Serial/Modbus sensor configuration
+RENOGY_SERIAL_CONFIG = RenogySerialSensorConfig(
+    name="wanderer",
+    read_type="serial",
+    device_path="/dev/ttyUSB0",
+    baud_rate=9600,
+    slave_address=1,
+    device_type="wanderer",
+    max_retries=3,
+)
+
+# Legacy config dict for backwards compatibility
+RENOGY_CONFIG = RENOGY_BT_CONFIG
 
 # Temperature sensor addresses (DS18B20 1-Wire sensors)
 TEMPERATURE_SENSORS = [

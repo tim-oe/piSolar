@@ -762,6 +762,25 @@ spelling = ["pyenchant (>=3.2,<4.0)"]
 testutils = ["gitpython (>3)"]
 
 [[package]]
+name = "pymodbus"
+version = "3.11.4"
+description = "A fully featured modbus protocol stack in python"
+optional = false
+python-versions = ">=3.10.0"
+groups = ["main"]
+files = [
+    {file = "pymodbus-3.11.4-py3-none-any.whl", hash = "sha256:89865929f53bd5e32b4076dde00ee86d9b8afb1686832ed74e69d55df22729c3"},
+    {file = "pymodbus-3.11.4.tar.gz", hash = "sha256:6910e385cb6b2f983cd457e9ecee2ff580dbb23cf3d84aefec0845e71edd606a"},
+]
+
+[package.extras]
+all = ["pymodbus[development,documentation,serial,simulator]"]
+development = ["build (>=1.2.2)", "codespell (>=2.3.0)", "coverage (>=7.10.7)", "mypy (>=1.18.2)", "pylint (>=4.0.0)", "pytest (>=8.4.2)", "pytest-aiohttp (>=1.0.5)", "pytest-asyncio (>=1.2.0)", "pytest-cov (>=7.0.0)", "pytest-profiling (>=1.7.0) ; python_version < \"3.13\"", "pytest-timeout (>=2.3.1)", "pytest-xdist (>=3.6.1)", "ruff (>=0.13.1)", "twine (>=6.2.0)", "types-Pygments", "types-pyserial"]
+documentation = ["Sphinx (>=7.3.7)", "recommonmark (>=0.7.1)", "sphinx-rtd-theme (>=2.0.0)"]
+serial = ["pyserial (>=3.5)"]
+simulator = ["aiohttp (>=3.10.6) ; python_version >= \"3.12\"", "aiohttp (>=3.8.6) ; python_version < \"3.12\""]
+
+[[package]]
 name = "pyobjc-core"
 version = "12.1"
 description = "Python<->ObjC Interoperability Module"
@@ -847,6 +866,21 @@ files = [
 [package.dependencies]
 pyobjc-core = ">=12.1"
 pyobjc-framework-Cocoa = ">=12.1"
+
+[[package]]
+name = "pyserial"
+version = "3.5"
+description = "Python Serial Port Extension"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "pyserial-3.5-py2.py3-none-any.whl", hash = "sha256:c4451db6ba391ca6ca299fb3ec7bae67a5c55dde170964c7a14ceefec02f2cf0"},
+    {file = "pyserial-3.5.tar.gz", hash = "sha256:3c77e014170dfffbd816e6ffc205e9842efb10be9f58ec16d3e8675b4925cddb"},
+]
+
+[package.extras]
+cp2110 = ["hidapi"]
 
 [[package]]
 name = "pytest"
@@ -1466,4 +1500,4 @@ all = ["winrt-Windows.Foundation.Collections[all] (>=3.2.1.0,<3.3.0.0)", "winrt-
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4.0"
-content-hash = "5557c17a0fa5465b26996933a4729de82ad20938448e8e5f31d67201bee17973"
+content-hash = "1a731a013b1baad95e4afe625378eed511bba5d301f84908546bfc0f1fa88537"
