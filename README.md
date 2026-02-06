@@ -41,11 +41,11 @@ poetry install
 
 Renogy charge controllers can be read via Bluetooth or Serial connections:
 
-| Connection | Module | Documentation |
-|------------|--------|---------------|
-| Bluetooth | BT-1/BT-2 | [bluetooth setup](docs/BLUETOOTH_SETUP.md) |
-| RS232 | RJ12 cable | [rs 232](docs/RS232.md) |
-| RS485 | RJ45 cable | [rs 485 WIP](docs/RS485.md) |
+| Connection | status | Module | Documentation |
+|------------|--------|--------|---------------|
+| Bluetooth | verified| BT-1/BT-2 | [bluetooth setup](docs/BLUETOOTH_SETUP.md) |
+| RS232 | verified | RJ12 cable | [rs 232](docs/RS232.md) |
+| RS485 | **WIP** | RJ45 cable | [rs 485](docs/RS485.md) |
 
 For Modbus protocol details, see [rover modbus](docs/rover_modbus.pdf).
 
