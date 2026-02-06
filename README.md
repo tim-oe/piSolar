@@ -23,6 +23,8 @@ Solar system monitoring service for Raspberry Pi. Collects metrics from temperat
 
 ## [Testbed](docs/TEST_BED.md)
 
+## [Solar Testbed](docs/SOLAR_TESTBED.md)
+
 ## Installation
 
 ```bash
