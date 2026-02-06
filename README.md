@@ -2,6 +2,8 @@
 
 Solar system monitoring service for Raspberry Pi. Collects metrics from temperature sensors (1-Wire) and Renogy BT-2 Bluetooth module.
 
+![test bed](docs/img/testbed.jpg?raw=true)
+
 ## Features
 
 - **Temperature Sensors**: Reads 1-Wire temperature sensors via `w1thermsensor`
