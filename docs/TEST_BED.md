@@ -1,6 +1,6 @@
 # test bed setup
 
-![test bed](docs/img/testbed.jpg?raw=true)
+![test bed](img/testbed.jpg?raw=true)
 
 ## test bed components
 
