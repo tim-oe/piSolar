@@ -1,4 +1,14 @@
-"""Lint script that runs black, isort, and flake8 on the src tree."""
+"""Lint script that runs black, isort, and flake8 on the src tree.
+
+This module provides Poetry console scripts for code quality tooling.
+Scripts are registered in pyproject.toml under [tool.poetry.scripts]
+and invoked via `poetry run lint` or `poetry run format`.
+
+References:
+    - Poetry scripts: https://python-poetry.org/docs/pyproject/#scripts
+    - PEP 621 (project metadata): https://peps.python.org/pep-0621/#entry-points
+    - Entry points specification: https://packaging.python.org/en/latest/specifications/entry-points/
+"""
 
 import subprocess
 import sys
