@@ -1,6 +1,6 @@
 # piSolar
 
-Solar system monitoring service for Raspberry Pi. Collects metrics from temperature sensors (1-Wire) and Renogy BT-2 Bluetooth module.
+Solar system monitoring service for Raspberry Pi. Collects metrics from temperature sensors (1-Wire) and renogy modbus data from bluetooth or serial connection.
 
 ![test bed](docs/img/testbed.jpg?raw=true)
 
