@@ -13,6 +13,14 @@ Solar system monitoring service for Raspberry Pi. Collects metrics from temperat
 - **Event-Driven Architecture**: Pluggable consumers via event bus
 - **Systemd Service**: Run as a system service
 
+## prereguisits 
+- python
+- poetry
+- raspberry pi 3, 4, 5, zero
+- renogy charge controller 
+    - wanderer BT-1
+    - rover B2-2
+
 ## Installation
 
 ```bash
@@ -24,10 +32,10 @@ poetry install
 ### Raspberry Pi Prerequisites
 
 - **Bluetooth**: Enable Bluetooth on your Pi for BT-1/BT-2 modules.
-  See [Raspberry Pi Bluetooth documentation](https://www.raspberrypi.com/documentation/computers/configuration.html#bluetooth).
+  - See [Raspberry Pi Bluetooth documentation](https://www.raspberrypi.com/documentation/computers/configuration.html#bluetooth).
 
 - **1-Wire**: Enable 1-Wire interface for DS18B20 temperature sensors.
-  See [Raspberry Pi 1-Wire documentation](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#one-wire).
+  - See [Raspberry Pi 1-Wire documentation](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#one-wire).
 
 ### Renogy Sensors
 
@@ -35,15 +43,15 @@ Renogy charge controllers can be read via Bluetooth or Serial connections:
 
 | Connection | Module | Documentation |
 |------------|--------|---------------|
-| Bluetooth | BT-1/BT-2 | [docs/BLUETOOTH_SETUP.md](docs/BLUETOOTH_SETUP.md) |
-| RS232 | RJ12 cable | [docs/RS232.md](docs/RS232.md) |
-| RS485 | RJ45 cable | [docs/RS485.md](docs/RS485.md) |
+| Bluetooth | BT-1/BT-2 | [bluetooth setup](docs/BLUETOOTH_SETUP.md) |
+| RS232 | RJ12 cable | [rs 232](docs/RS232.md) |
+| RS485 | RJ45 cable | [rs 485 WIP](docs/RS485.md) |
 
-For Modbus protocol details, see [docs/rover_modbus.pdf](docs/rover_modbus.pdf).
+For Modbus protocol details, see [rover modbus](docs/rover_modbus.pdf).
 
 ## Configuration
 
-See **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)** for configuration options.
+See **[yaml configuration](docs/CONFIGURATION.md)** for configuration options.
 
 ## Usage
 
@@ -57,10 +65,6 @@ pisolar read-once                        # Read all sensors once (for testing)
 pisolar show-config                      # Display current configuration
 pisolar -c config.yaml -l logging.yaml run  # Specify config files
 ```
-
-## Systemd Service
-
-To run piSolar as a system service, see **[docs/SYSTEMD.md](docs/SYSTEMD.md)**.
 
 ## Development Commands
 
@@ -84,3 +88,7 @@ poetry run pytest -k "test_read"           # Run tests matching pattern
 poetry run pytest --cov                    # Run tests with coverage
 poetry run pytest --cov --cov-report=html  # Coverage with HTML report
 ```
+
+## Systemd Service
+
+To run piSolar as a system service, see **[systemd](docs/SYSTEMD.md)**.
