@@ -13,13 +13,15 @@ Solar system monitoring service for Raspberry Pi. Collects metrics from temperat
 - **Event-Driven Architecture**: Pluggable consumers via event bus
 - **Systemd Service**: Run as a system service
 
-## prereguisits 
+## Prereguisits 
 - python
 - poetry
 - raspberry pi 3, 4, 5, zero
 - renogy charge controller 
     - wanderer BT-1
     - rover B2-2
+
+## [Testbed](docs/TEST_BED.md)
 
 ## Installation
 
