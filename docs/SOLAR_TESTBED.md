@@ -1,8 +1,6 @@
 # solar testbed
 
-initial setup with renogy wanderer with 2 10 watt panels. this was sufficient during summer but wasn't enough to sustain the load during winter months. Upgraded system to renogy rover and a 100 watt panel that has been sustaining enough power during winter.
-
-## system stand
+## staging setup for environmental testing
 
 ![test bed](img/staging.jpg?raw=true)
 
@@ -17,3 +15,13 @@ initial setup with renogy wanderer with 2 10 watt panels. this was sufficient du
 ## battery box 4x 12v 7.2AH batteries connected in parallel 
 
 ![head](img/batteries.jpg?raw=true)
+
+initial setup with renogy wanderer with 2 10 watt panels. this was sufficient during summer but wasn't enough to sustain the load during winter months. Upgraded system to renogy rover and a 100 watt panel that has been sustaining enough power during winter.
+
+## panel upgrade
+
+![100 watt pnale](img/100-watt-panel.jpg?raw=true)
+
+## charge controller upgrade
+
+![100 watt pnale](img/pi-rover-bt-2.jpg?raw=true)
