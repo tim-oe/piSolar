@@ -2,6 +2,8 @@
 
 ## staging setup for environmental testing
 
+initial setup with renogy wanderer with 2 10 watt panels.
+
 ![test bed](img/staging.jpg?raw=true)
 
 ## gps and wireless antennas
@@ -16,7 +18,7 @@
 
 ![head](img/batteries.jpg?raw=true)
 
-initial setup with renogy wanderer with 2 10 watt panels. this was sufficient during summer but wasn't enough to sustain the load during winter months. Upgraded system to renogy rover and a 100 watt panel that has been sustaining enough power during winter.
+ this was sufficient during summer but wasn't enough to sustain the load during shortened daylight and extended overcast days. Upgraded system to renogy rover and a 100 watt panel that has been sustaining enough power during winter.
 
 ## panel upgrade
 
