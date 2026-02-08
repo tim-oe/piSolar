@@ -1,12 +1,17 @@
 # Bluetooth and Renogy BT-2 Setup Guide
 
-This guide covers setting up Bluetooth on Raspberry Pi and installing the renogy-bt library for communicating with Renogy BT-1/BT-2 Bluetooth modules.
+ **✅ VERIFIED coonectivity - BT-1 BT-2**
+
+This guide covers setting up Bluetooth on Raspberry Pi and discovering Renogy BT-1/BT-2 Bluetooth modules.
+
+For configuration details, see [CONFIGURATION.md](CONFIGURATION.md).  
+For running as a service, see [SYSTEMD.md](SYSTEMD.md).
 
 ## Prerequisites
 
 - Raspberry Pi with built-in Bluetooth (Pi 3, 4, Zero W, etc.) or USB Bluetooth adapter
 - Raspberry Pi OS (Bullseye or later recommended)
-- Python 3.10+
+- Python 3.13+
 - piSolar installed via Poetry
 
 ## 1. Enable and Configure Bluetooth
@@ -93,7 +98,7 @@ Example output:
 [NEW] Device CC:45:A5:AB:F1:0E BT-TH-A5ABF10E
 ```
 
-Note the **MAC address** (e.g., `CC:45:A5:AB:F1:0E`) and **device name** (e.g., `BT-TH-A5ABF10E`).
+Note the **MAC address** (e.g., `CC:45:A5:AB:F1:0E`) - you'll need this for configuration.
 
 ### 2.3 Stop Scanning
 
@@ -102,113 +107,67 @@ scan off
 exit
 ```
 
-## 3. Install renogy-bt Library
+## 3. Install Dependencies
 
-The renogy-bt library is not on PyPI, so it must be installed manually.
-
-### 3.1 Clone the Repository
-
-```bash
-# Clone next to your piSolar project
-cd ~/src
-git clone https://github.com/cyrils/renogy-bt.git
-```
-
-### 3.2 Install Dependencies
-
-Install the renogy-bt dependencies into your Poetry environment:
+The required libraries are automatically installed via Poetry:
 
 ```bash
 cd ~/src/piSolar
-poetry run pip install -r ~/src/renogy-bt/requirements.txt
+poetry install
 ```
 
-### 3.3 Verify Installation
+This installs:
+- `renogy-ble` - Library for parsing Renogy BLE data
+- `bleak` - Bluetooth Low Energy platform client
+
+### 3.1 Verify Installation
 
 ```bash
 # Should not raise ImportError
-PYTHONPATH=~/src/renogy-bt poetry run python -c "from renogybt import RoverClient; print('OK')"
+poetry run python -c "from renogy_ble import RenogyBleClient; print('OK')"
 ```
 
-## 4. Configure piSolar
+## 4. Test the Connection
 
-### 4.1 Update config.yaml
-
-Edit your piSolar configuration with the device details from step 2:
-
-```yaml
-renogy:
-  enabled: true
-  name: "Solar Controller"
-  mac_address: CC:45:A5:AB:F1:0E  # Your BT-2 MAC address
-  device_alias: BT-TH-A5ABF10E     # Your BT-2 device name
-  schedule:
-    cron: "*/5 * * * *"  # Read every 5 minutes
-    enabled: true
-```
-
-### 4.2 Copy Template File (if deploying to /etc)
+### 4.1 Verify Adapter is Detected
 
 ```bash
-sudo mkdir -p /etc/pisolar
-sudo cp config/renogy_bt.ini.template /etc/pisolar/
+poetry run python -c "
+from pathlib import Path
+bt = Path('/sys/class/bluetooth')
+if bt.exists():
+    adapters = [d.name for d in bt.iterdir() if d.is_dir() and d.name.startswith('hci')]
+    print(f'Found adapters: {adapters}')
+else:
+    print('No bluetooth sysfs found')
+"
 ```
 
-## 5. Test the Connection
-
-### 5.1 Run a Single Read
+### 4.2 Manual BLE Scan Test
 
 ```bash
-PYTHONPATH=~/src/renogy-bt poetry run pisolar \
-  -c config/config.yaml \
-  -l config/logging.yaml \
-  read-once
+poetry run python -c "
+import asyncio
+from bleak import BleakScanner
+
+async def scan():
+    print('Scanning for 15 seconds...')
+    devices = await BleakScanner.discover(timeout=15.0)
+    for d in devices:
+        if 'BT-TH' in (d.name or '') or 'RNGR' in (d.name or ''):
+            print(f'Found Renogy device: {d.name} - {d.address}')
+    print(f'Total devices found: {len(devices)}')
+
+asyncio.run(scan())
+"
 ```
 
-Expected output:
-```
-Reading sensors...
-  [solar] BT-TH-A5ABF10E: {'type': 'solar', 'name': 'BT-TH-A5ABF10E', 'battery_voltage': 13.2, ...}
+### 4.3 Test with piSolar
 
-Total: 1 readings
-```
-
-### 5.2 Check Command
+After configuring your device (see [CONFIGURATION.md](CONFIGURATION.md)):
 
 ```bash
-PYTHONPATH=~/src/renogy-bt poetry run pisolar \
-  -c config/config.yaml \
-  -l config/logging.yaml \
-  check
-```
-
-## 6. Running as a Service
-
-### 6.1 Create Environment File
-
-Create `/etc/pisolar/environment`:
-
-```bash
-PYTHONPATH=/home/pi/src/renogy-bt
-```
-
-### 6.2 Update systemd Service
-
-Ensure the systemd service file includes the environment:
-
-```ini
-[Service]
-EnvironmentFile=/etc/pisolar/environment
-ExecStart=/home/pi/.local/bin/poetry run pisolar -c /etc/pisolar/config.yaml -l /etc/pisolar/logging.yaml run
-```
-
-### 6.3 Enable and Start
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable pisolar
-sudo systemctl start pisolar
-sudo systemctl status pisolar
+poetry run pisolar -c config/config.yaml -l config/logging.yaml read-once
 ```
 
 ## Troubleshooting
@@ -237,13 +196,34 @@ sudo systemctl restart bluetooth
 ### Device Not Found During Scan
 
 1. Ensure the BT-2 is powered on and connected to the charge controller
-2. Move closer to the BT-2 module
+2. Move closer to the BT-2 module (BLE has limited range ~10m)
 3. Try restarting the BT-2 by disconnecting and reconnecting power
-4. Check that the MAC address in config matches exactly
+4. Check that the charge controller is powered on
+5. Increase `scan_timeout` in config if the default 15 seconds isn't enough
+6. Ensure no other devices are connected to the BT-2 (only one connection at a time)
 
-### "Task exception was never retrieved" (EOFError)
+### "Could not find Renogy device with MAC address"
 
-This is a non-fatal error during BLE disconnect. The data was read successfully. piSolar suppresses this at debug level.
+This means the BLE scan completed but didn't find your device:
+
+```bash
+# Scan and show ALL devices to verify Bluetooth is working
+poetry run python -c "
+import asyncio
+from bleak import BleakScanner
+
+async def scan():
+    devices = await BleakScanner.discover(timeout=15.0)
+    for d in devices:
+        print(f'{d.address:20} {d.name}')
+asyncio.run(scan())
+"
+```
+
+If you see other devices but not your Renogy device:
+- Verify the MAC address is correct
+- Try power cycling the BT-2 module
+- Make sure no smartphone app is connected to it
 
 ### Permission Denied for Bluetooth
 
@@ -254,19 +234,51 @@ sudo usermod -a -G bluetooth $USER
 # Log out and back in for changes to take effect
 ```
 
-### Bluetooth Works Manually but Not from Service
+### "bleak" or "renogy_ble" Module Not Found
 
-Ensure the systemd service runs as a user with Bluetooth permissions, or run as root:
+Ensure you're using the Poetry environment:
 
-```ini
-[Service]
-User=root
+```bash
+# Check installed packages
+poetry show | grep -E "(bleak|renogy-ble)"
+
+# Should show:
+# bleak                 2.1.1
+# renogy-ble            1.2.0
+
+# If missing, reinstall
+poetry install
 ```
 
-Or configure PolicyKit/D-Bus permissions for the service user.
+### BLE Scan Times Out
+
+If scans consistently time out:
+
+```bash
+# Check BlueZ version (should be 5.50+)
+bluetoothctl --version
+
+# Restart Bluetooth daemon
+sudo systemctl restart bluetooth
+
+# Check for interference - disable WiFi temporarily
+sudo rfkill block wifi
+# Try scanning
+# Re-enable WiFi
+sudo rfkill unblock wifi
+```
+
+### Connection Drops or Intermittent
+
+- Reduce distance to BT-2 module
+- Check for 2.4GHz interference (WiFi, microwaves, etc.)
+- Ensure good power supply to BT-2 and Raspberry Pi
+- Increase `max_retries` in configuration
 
 ## Reference
 
-- [renogy-bt GitHub](https://github.com/cyrils/renogy-bt)
+- [renogy-ble on PyPI](https://pypi.org/project/renogy-ble/)
+- [renogy-ble GitHub](https://github.com/cyrils/renogy-ble)
+- [bleak GitHub](https://github.com/hbldh/bleak)
 - [BlueZ Documentation](http://www.bluez.org/)
 - [Raspberry Pi Bluetooth Setup](https://www.raspberrypi.com/documentation/computers/configuration.html#bluetooth)
