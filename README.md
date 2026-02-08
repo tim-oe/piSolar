@@ -82,6 +82,7 @@ The project provides convenient run targets for common tasks:
 poetry run pisolar          # Run the pisolar CLI
 poetry run lint             # Check code style (isort, black, flake8)
 poetry run format           # Auto-fix code formatting (isort, black)
+poetry run test             # run all tests will coverage
 ```
 
 ### Testing

@@ -32,6 +32,7 @@ packages = [{include = "pisolar", from = "src"}]
 pisolar = "pisolar.cli:main"
 lint = "scripts.lint:main"
 format = "scripts.lint:format_code"
+test = "scripts.test:main"
 
 
 [tool.poetry.group.dev.dependencies]
