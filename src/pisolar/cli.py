@@ -1,4 +1,14 @@
-"""Command-line interface for piSolar."""
+"""
+Command-line interface for piSolar.
+
+Usage:
+  pisolar run
+  pisolar check
+  pisolar read_once
+  pisolar show_config
+
+  see https://click.palletsprojects.com/en/stable/
+"""
 
 import sys
 
@@ -8,6 +18,7 @@ from pisolar.config import Settings
 from pisolar.logging_config import get_logger, setup_logging
 from pisolar.scheduler import SchedulerService
 from pisolar.sensors import RenogySensor, TemperatureSensor
+from pisolar.sensors.temperature.reading import TemperatureReading
 from pisolar.services.consumers import LoggingConsumer
 from pisolar.services.metrics import MetricsService
 
@@ -30,7 +41,7 @@ DEFAULT_LOG_CONFIG = "/etc/pisolar/logging.yaml"
     default=DEFAULT_LOG_CONFIG,
     help="Path to logging configuration file",
 )
-@click.pass_context
+@click.pass_context  # type: ignore[arg-type]
 def main(ctx: click.Context, config: str, log_config: str) -> None:
     """piSolar - Solar system monitoring service."""
     ctx.ensure_object(dict)
@@ -151,7 +162,8 @@ def read_once(ctx: click.Context) -> None:
         readings = temp_sensor.read()
         all_readings.extend(readings)
         for reading in readings:
-            click.echo(f"  [temp] {reading.name}: {reading.value:.2f} {reading.unit}")
+            if isinstance(reading, TemperatureReading):
+                click.echo(f"  [temp] {reading.name}: {reading.value:.2f} {reading.unit}")
 
     if settings.renogy.enabled and settings.renogy.sensors:
         for sensor_config in settings.renogy.sensors:
