@@ -9,6 +9,10 @@ from pyaml_env import parse_config
 def setup_logging(config_path: str) -> None:
     """Configure logging from a YAML file with environment variable support."""
     config = parse_config(config_path)
+    if config is None:
+        raise ValueError(f"Failed to parse logging config from {config_path}")
+    if not isinstance(config, dict):
+        raise TypeError(f"Expected dict config, got {type(config)}")
     logging.config.dictConfig(config)
 
 

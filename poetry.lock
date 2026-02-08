@@ -510,6 +510,17 @@ dev = ["pre-commit", "tox"]
 testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
+name = "py-singleton"
+version = "1.0.0"
+description = "singleton pattern for python 2 and 3"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "py-singleton-1.0.0.tar.gz", hash = "sha256:9922a69f6e6b9390e5c1b3d2b39e119d5fcffa92d9c3145de3b8533a93077fb7"},
+]
+
+[[package]]
 name = "pyaml-env"
 version = "1.2.2"
 description = "Provides yaml file parsing with environment variable resolution"
@@ -1500,4 +1511,4 @@ all = ["winrt-Windows.Foundation.Collections[all] (>=3.2.1.0,<3.3.0.0)", "winrt-
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4.0"
-content-hash = "1a731a013b1baad95e4afe625378eed511bba5d301f84908546bfc0f1fa88537"
+content-hash = "7295ad33485182df17e8fe6a87232d9c733c7a8bc9336954e9b6ba8e380421bd"

@@ -3,11 +3,17 @@
 from collections.abc import Callable
 from typing import Any
 
+from py_singleton import singleton
+
 from pisolar.logging_config import get_logger
 
 
+@singleton
 class EventBus:
-    """Simple event bus for publishing and subscribing to events."""
+    """Simple event bus for publishing and subscribing to events.
+
+    This is a singleton - all instances of EventBus will be the same object.
+    """
 
     _logger = get_logger("event_bus")
 
@@ -61,13 +67,9 @@ class EventBus:
                 pass
 
 
-# Global event bus instance
-_event_bus: EventBus | None = None
-
-
 def get_event_bus() -> EventBus:
-    """Get the global event bus instance."""
-    global _event_bus
-    if _event_bus is None:
-        _event_bus = EventBus()
-    return _event_bus
+    """Get the global event bus instance.
+
+    Returns the singleton EventBus instance.
+    """
+    return EventBus()

@@ -7,12 +7,17 @@ from typing import Any
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
+from py_singleton import singleton
 
 from pisolar.logging_config import get_logger
 
 
+@singleton
 class SchedulerService:
-    """Scheduler service wrapping APScheduler with cron syntax support."""
+    """Scheduler service wrapping APScheduler with cron syntax support.
+
+    This is a singleton - all instances of SchedulerService will be the same object.
+    """
 
     _logger = get_logger("scheduler")
 
