@@ -2,6 +2,8 @@
 
 from unittest.mock import MagicMock, patch
 
+from pisolar.sensors.renogy.bluetooth_reader import BluetoothReader
+
 
 class TestBluetoothReader:
     """Tests for BluetoothReader helper functions."""
@@ -19,8 +21,6 @@ class TestBluetoothReader:
         mock_bt_path.iterdir.return_value = [mock_hci0]
         mock_path_class.return_value = mock_bt_path
 
-        from pisolar.sensors.renogy.bluetooth_reader import _bluetooth_available
-
-        result = _bluetooth_available()
+        result = BluetoothReader._bluetooth_available()
 
         assert result is True or result is False

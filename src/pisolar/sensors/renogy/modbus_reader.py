@@ -2,17 +2,18 @@
 
 import asyncio
 import time
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any
 
 from pisolar.config.renogy_config import (
     DEFAULT_BAUD_RATE,
     DEFAULT_MAX_RETRIES,
     DEFAULT_SLAVE_ADDRESS,
 )
-from pisolar.logging_config import get_logger
+from pisolar.config.renogy_device_type import DeviceType
 from pisolar.sensors.renogy.reader import RenogyReader
 
-logger = get_logger("sensors.renogy.modbus")
+if TYPE_CHECKING:
+    from pymodbus.client import ModbusSerialClient
 
 # Delay between retry attempts
 _RETRY_DELAY = 1.0  # seconds between retries
@@ -68,8 +69,6 @@ CHARGING_STATUS = {
     6: "current_limiting",
 }
 
-DeviceType = Literal["controller", "dcc", "rover", "wanderer"]
-
 
 def _to_signed_8bit(value: int) -> int:
     """Convert 8-bit sign+magnitude value to signed integer.
@@ -112,7 +111,7 @@ class ModbusReader(RenogyReader):
         self,
         device_path: str,
         device_name: str = "Renogy",
-        device_type: DeviceType = "controller",
+        device_type: DeviceType = DeviceType.CONTROLLER,
         baud_rate: int = DEFAULT_BAUD_RATE,
         slave_address: int = DEFAULT_SLAVE_ADDRESS,
         max_retries: int = DEFAULT_MAX_RETRIES,
@@ -127,12 +126,12 @@ class ModbusReader(RenogyReader):
             slave_address: Modbus slave address (default 1)
             max_retries: Number of retry attempts for connection failures
         """
+        super().__init__(max_retries=max_retries, retry_delay=_RETRY_DELAY)
         self._device_path = device_path
         self._device_name = device_name
         self._device_type: DeviceType = device_type
         self._baud_rate = baud_rate
         self._slave_address = slave_address
-        self._max_retries = max_retries
         self._client = None
 
     @property
@@ -154,48 +153,22 @@ class ModbusReader(RenogyReader):
                 pass
             self._client = None
 
-    async def read(self) -> dict[str, Any]:
+    async def _read_implementation(self) -> dict[str, Any]:
         """Read data from the Renogy controller via Modbus.
 
         Returns:
             Dictionary containing the raw data from the device.
 
         Raises:
-            RuntimeError: If the read fails after retries.
+            RuntimeError: If the read fails.
         """
-        last_error: Exception | None = None
-
-        for attempt in range(1, self._max_retries + 1):
-            try:
-                # Run synchronous Modbus operations in executor
-                loop = asyncio.get_running_loop()
-                return await loop.run_in_executor(None, self._read_sync)
-            except Exception as e:
-                last_error = e
-                if attempt < self._max_retries:
-                    logger.warning(
-                        "Attempt %d/%d failed for %s: %s. Retrying in %.1fs...",
-                        attempt,
-                        self._max_retries,
-                        self._device_name,
-                        str(e),
-                        _RETRY_DELAY,
-                    )
-                    await asyncio.sleep(_RETRY_DELAY)
-                else:
-                    logger.error(
-                        "All %d attempts failed for %s",
-                        self._max_retries,
-                        self._device_name,
-                    )
-
-        raise RuntimeError(
-            f"Failed to read from Renogy device after {self._max_retries} attempts: "
-            f"{last_error}"
-        )
+        # Run synchronous Modbus operations in executor
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self._read_sync)
 
     def _read_sync(self) -> dict[str, Any]:
         """Synchronous implementation of Modbus read."""
+        # Import at runtime to allow mocking in tests
         from pymodbus.client import ModbusSerialClient
 
         start_time = time.perf_counter()
@@ -217,7 +190,7 @@ class ModbusReader(RenogyReader):
                 )
 
             connect_elapsed_ms = (time.perf_counter() - start_time) * 1000
-            logger.debug(
+            self._logger.debug(
                 "Connected to %s at %s (%.1fms)",
                 self._device_name,
                 self._device_path,
@@ -237,7 +210,7 @@ class ModbusReader(RenogyReader):
                     )
 
                     if result.isError():
-                        logger.debug(
+                        self._logger.debug(
                             "Error reading register 0x%04X (%s): %s",
                             reg_addr,
                             field_name,
@@ -258,7 +231,7 @@ class ModbusReader(RenogyReader):
                     data[field_name] = value
 
                 except Exception as e:
-                    logger.debug(
+                    self._logger.debug(
                         "Exception reading register 0x%04X (%s): %s",
                         reg_addr,
                         field_name,
@@ -279,7 +252,7 @@ class ModbusReader(RenogyReader):
                     ctrl_temp, batt_temp = _parse_temperature_register(raw_temp)
                     data["controller_temperature"] = ctrl_temp
                     data["battery_temperature"] = batt_temp
-                    logger.debug(
+                    self._logger.debug(
                         "Temperature register 0x%04X = 0x%04X -> ctrl=%d, batt=%d",
                         TEMPERATURE_REGISTER,
                         raw_temp,
@@ -289,7 +262,7 @@ class ModbusReader(RenogyReader):
                 else:
                     read_errors += 1
             except Exception as e:
-                logger.debug("Exception reading temperature register: %s", e)
+                self._logger.debug("Exception reading temperature register: %s", e)
                 read_errors += 1
 
             # Try to read charging status
@@ -315,7 +288,7 @@ class ModbusReader(RenogyReader):
             data["__connect_ms"] = round(connect_elapsed_ms, 1)
             data["__total_ms"] = round(total_elapsed_ms, 1)
 
-            logger.info(
+            self._logger.info(
                 "Read %d field(s) from %s via Modbus "
                 "(connect: %.1fms, total: %.1fms, errors: %d)",
                 len(data) - 4,  # Exclude metadata fields

@@ -10,8 +10,8 @@ from pisolar.config.renogy_defaults import (
     DEFAULT_MAX_RETRIES,
     DEFAULT_SCAN_TIMEOUT,
     DEFAULT_SLAVE_ADDRESS,
-    DeviceType,
 )
+from pisolar.config.renogy_device_type import DeviceType
 from pisolar.config.renogy_serial_sensor_config import RenogySerialSensorConfig
 from pisolar.config.sensor_schedule import SensorSchedule
 

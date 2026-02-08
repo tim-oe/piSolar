@@ -5,11 +5,11 @@ from typing import Any
 
 from pisolar.logging_config import get_logger
 
-logger = get_logger("event_bus")
-
 
 class EventBus:
     """Simple event bus for publishing and subscribing to events."""
+
+    _logger = get_logger("event_bus")
 
     def __init__(self) -> None:
         """Initialize the event bus."""
@@ -26,7 +26,7 @@ class EventBus:
         if event_type not in self._subscribers:
             self._subscribers[event_type] = []
         self._subscribers[event_type].append(handler)
-        logger.debug("Subscribed handler to event type: %s", event_type)
+        self._logger.debug("Subscribed handler to event type: %s", event_type)
 
     def publish(self, event_type: str, data: Any) -> None:
         """
@@ -37,13 +37,13 @@ class EventBus:
             data: The event data to pass to handlers
         """
         handlers = self._subscribers.get(event_type, [])
-        logger.debug("Publishing event %s to %d handler(s)", event_type, len(handlers))
+        self._logger.debug("Publishing event %s to %d handler(s)", event_type, len(handlers))
 
         for handler in handlers:
             try:
                 handler(data)
             except Exception as e:
-                logger.error("Error in event handler for %s: %s", event_type, e)
+                self._logger.error("Error in event handler for %s: %s", event_type, e)
 
     def unsubscribe(self, event_type: str, handler: Callable[[Any], None]) -> None:
         """
@@ -56,7 +56,7 @@ class EventBus:
         if event_type in self._subscribers:
             try:
                 self._subscribers[event_type].remove(handler)
-                logger.debug("Unsubscribed handler from event type: %s", event_type)
+                self._logger.debug("Unsubscribed handler from event type: %s", event_type)
             except ValueError:
                 pass
 

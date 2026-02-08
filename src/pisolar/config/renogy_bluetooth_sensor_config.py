@@ -7,8 +7,8 @@ from pydantic import BaseModel, Field
 from pisolar.config.renogy_defaults import (
     DEFAULT_MAX_RETRIES,
     DEFAULT_SCAN_TIMEOUT,
-    DeviceType,
 )
+from pisolar.config.renogy_device_type import DeviceType
 
 
 class RenogyBluetoothSensorConfig(BaseModel):
@@ -22,7 +22,7 @@ class RenogyBluetoothSensorConfig(BaseModel):
     mac_address: str = Field(description="Bluetooth MAC address of BT-1/BT-2 module")
     device_alias: str = Field(default="BT-2", description="Device alias for logging")
     device_type: DeviceType = Field(
-        default="controller",
+        default=DeviceType.CONTROLLER,
         description="Device type: 'controller', 'rover', 'wanderer', or 'dcc'",
     )
     scan_timeout: float = Field(

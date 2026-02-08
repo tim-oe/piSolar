@@ -14,11 +14,11 @@ from pisolar.sensors.base_sensor import BaseSensor
 from pisolar.sensors.sensor_reading import SensorReading
 from pisolar.sensors.temperature.reading import TemperatureReading
 
-logger = get_logger("sensors.temperature")
-
 
 class TemperatureSensor(BaseSensor):
     """Temperature sensor using 1-Wire protocol via w1thermsensor."""
+
+    _logger = get_logger("sensors.temperature")
 
     def __init__(self, sensors: list[dict[str, str]]) -> None:
         """
@@ -55,14 +55,14 @@ class TemperatureSensor(BaseSensor):
                         sensor_type=Sensor.DS18B20, sensor_id=address
                     )
                 except Exception as e:
-                    logger.warning("Sensor %s (%s) not found: %s", name, address, e)
+                    self._logger.warning("Sensor %s (%s) not found: %s", name, address, e)
                     continue
 
             sensor_start = time.perf_counter()
             try:
                 temp_celsius = sensor.get_temperature()
             except ResetValueError:
-                logger.warning(
+                self._logger.warning(
                     "Sensor %s (%s) returned reset value (85°C). "
                     "Check power supply and wiring.",
                     name,
@@ -70,14 +70,14 @@ class TemperatureSensor(BaseSensor):
                 )
                 continue
             except SensorNotReadyError:
-                logger.warning(
+                self._logger.warning(
                     "Sensor %s (%s) not ready. Skipping this read.",
                     name,
                     address,
                 )
                 continue
             except W1ThermSensorError as e:
-                logger.warning(
+                self._logger.warning(
                     "Sensor %s (%s) read error: %s",
                     name,
                     address,
@@ -94,7 +94,7 @@ class TemperatureSensor(BaseSensor):
                 read_duration_ms=round(sensor_elapsed_ms, 1),
             )
             readings.append(reading)
-            logger.debug(
+            self._logger.debug(
                 "Temperature: %s (%s) = %.2fC in %.1fms",
                 name,
                 address,
@@ -103,7 +103,7 @@ class TemperatureSensor(BaseSensor):
             )
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000
-        logger.info(
+        self._logger.info(
             "Read %d temperature sensor(s) in %.1fms (%.1fms/sensor)",
             len(readings),
             elapsed_ms,

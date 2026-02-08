@@ -8,8 +8,8 @@ from pisolar.config.renogy_defaults import (
     DEFAULT_BAUD_RATE,
     DEFAULT_MAX_RETRIES,
     DEFAULT_SLAVE_ADDRESS,
-    DeviceType,
 )
+from pisolar.config.renogy_device_type import DeviceType
 
 
 class RenogySerialSensorConfig(BaseModel):
@@ -33,7 +33,7 @@ class RenogySerialSensorConfig(BaseModel):
         description="Modbus slave address (typically 1 for Renogy)",
     )
     device_type: DeviceType = Field(
-        default="controller",
+        default=DeviceType.CONTROLLER,
         description="Device type: 'controller', 'rover', 'wanderer', or 'dcc'",
     )
     max_retries: int = Field(

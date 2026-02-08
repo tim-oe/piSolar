@@ -5,11 +5,11 @@ from pisolar.logging_config import get_logger
 from pisolar.sensors.sensor_reading import SensorReading
 from pisolar.services.metrics import SENSOR_READING_EVENT
 
-logger = get_logger("services.consumers")
-
 
 class LoggingConsumer:
     """Consumer that logs sensor readings to console/logging."""
+
+    _logger = get_logger("services.consumers")
 
     def __init__(self) -> None:
         """Initialize the logging consumer."""
@@ -19,4 +19,4 @@ class LoggingConsumer:
     def _handle_reading(self, reading: SensorReading) -> None:
         """Handle a sensor reading event."""
         data = reading.to_dict()
-        logger.info("sensor.reading %s %s %s", reading.type, reading.name, data)
+        self._logger.info("sensor.reading %s %s %s", reading.type, reading.name, data)

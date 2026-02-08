@@ -1,6 +1,7 @@
 """Renogy sensor implementation with pluggable readers (Bluetooth/Modbus)."""
 
 import asyncio
+import concurrent.futures
 import time
 from typing import Any, Union
 
@@ -14,51 +15,14 @@ from pisolar.sensors.renogy.reader import RenogyReader
 from pisolar.sensors.renogy.reading import SolarReading
 from pisolar.sensors.sensor_reading import SensorReading
 
-logger = get_logger("sensors.renogy")
-
 # Type alias for sensor config union
 RenogySensorConfig = Union[RenogyBluetoothSensorConfig, RenogySerialSensorConfig]
 
 
-def create_reader(config: RenogySensorConfig) -> RenogyReader:
-    """Create the appropriate reader based on sensor configuration.
-
-    Args:
-        config: Sensor configuration (Bluetooth or Serial)
-
-    Returns:
-        Configured RenogyReader instance
-
-    Raises:
-        ValueError: If read_type is not supported
-    """
-    if config.read_type == "bt":
-        from pisolar.sensors.renogy.bluetooth_reader import BluetoothReader
-
-        return BluetoothReader(
-            mac_address=config.mac_address,
-            device_alias=config.device_alias,
-            device_type=config.device_type,
-            scan_timeout=config.scan_timeout,
-            max_retries=config.max_retries,
-        )
-    elif config.read_type == "serial":
-        from pisolar.sensors.renogy.modbus_reader import ModbusReader
-
-        return ModbusReader(
-            device_path=config.device_path,
-            device_name=config.name,
-            device_type=config.device_type,
-            baud_rate=config.baud_rate,
-            slave_address=config.slave_address,
-            max_retries=config.max_retries,
-        )
-    else:
-        raise ValueError(f"Unsupported read_type: {config.read_type}")
-
-
 class RenogySensor(BaseSensor):
     """Renogy sensor with pluggable reader (Bluetooth or Modbus/Serial)."""
+
+    _logger = get_logger("sensors.renogy")
 
     def __init__(self, config: RenogySensorConfig) -> None:
         """Initialize the Renogy sensor.
@@ -67,7 +31,7 @@ class RenogySensor(BaseSensor):
             config: Sensor configuration (Bluetooth or Serial)
         """
         self._config = config
-        self._reader = create_reader(config)
+        self._reader = RenogyReader.create_reader(config)
 
     @property
     def sensor_type(self) -> str:
@@ -99,8 +63,6 @@ class RenogySensor(BaseSensor):
 
             if loop is not None:
                 # Already in an async context - run in executor
-                import concurrent.futures
-
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     future = executor.submit(self._read_sync)
                     return future.result(timeout=60.0)
@@ -108,7 +70,7 @@ class RenogySensor(BaseSensor):
                 return asyncio.run(self._read_async())
         finally:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
-            logger.debug(
+            self._logger.debug(
                 "Total Renogy read time: %.1fms for %s (%s)",
                 elapsed_ms,
                 self._reader.device_name,
@@ -126,7 +88,7 @@ class RenogySensor(BaseSensor):
         try:
             data = await self._reader.read()
         except Exception as e:
-            logger.error(
+            self._logger.error(
                 "Failed to read from %s (%s): %s",
                 self._reader.device_name,
                 self._reader.connection_type,

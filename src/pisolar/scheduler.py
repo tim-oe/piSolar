@@ -10,11 +10,11 @@ from apscheduler.triggers.cron import CronTrigger
 
 from pisolar.logging_config import get_logger
 
-logger = get_logger("scheduler")
-
 
 class SchedulerService:
     """Scheduler service wrapping APScheduler with cron syntax support."""
+
+    _logger = get_logger("scheduler")
 
     def __init__(self) -> None:
         """Initialize the scheduler."""
@@ -29,7 +29,7 @@ class SchedulerService:
     def _handle_shutdown(self, signum: int, frame: Any) -> None:
         """Handle shutdown signals gracefully."""
         sig_name = signal.Signals(signum).name
-        logger.info("Received %s, shutting down scheduler...", sig_name)
+        self._logger.info("Received %s, shutting down scheduler...", sig_name)
         self.stop()
         sys.exit(0)
 
@@ -73,21 +73,21 @@ class SchedulerService:
             replace_existing=True,
             kwargs=kwargs,
         )
-        logger.info("Added job '%s' with schedule: %s", job_id, cron_expression)
+        self._logger.info("Added job '%s' with schedule: %s", job_id, cron_expression)
 
     def start(self) -> None:
         """Start the scheduler (blocking)."""
-        logger.info("Starting scheduler...")
+        self._logger.info("Starting scheduler...")
         try:
             self._scheduler.start()
         except (KeyboardInterrupt, SystemExit):
-            logger.info("Scheduler stopped")
+            self._logger.info("Scheduler stopped")
 
     def stop(self) -> None:
         """Stop the scheduler."""
         if self._scheduler.running:
             self._scheduler.shutdown(wait=False)
-            logger.info("Scheduler stopped")
+            self._logger.info("Scheduler stopped")
 
     @property
     def running(self) -> bool:

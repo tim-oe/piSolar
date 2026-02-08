@@ -4,14 +4,14 @@ from pisolar.event_bus import get_event_bus
 from pisolar.logging_config import get_logger
 from pisolar.sensors.sensor_reading import SensorReading
 
-logger = get_logger("services.metrics")
-
 # Event type for sensor readings
 SENSOR_READING_EVENT = "sensor.reading"
 
 
 class MetricsService:
     """Service for collecting and publishing sensor metrics via event bus."""
+
+    _logger = get_logger("services.metrics")
 
     def __init__(self) -> None:
         """Initialize the metrics service."""
@@ -27,4 +27,4 @@ class MetricsService:
         for reading in readings:
             self._event_bus.publish(SENSOR_READING_EVENT, reading)
 
-        logger.info("Published %d sensor reading(s)", len(readings))
+        self._logger.info("Published %d sensor reading(s)", len(readings))

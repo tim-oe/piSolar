@@ -39,7 +39,7 @@ class TestLoggingConsumer:
                 value=22.5,
             )
 
-            with patch("pisolar.services.consumers.logger") as mock_logger:
+            with patch("pisolar.services.consumers.LoggingConsumer._logger") as mock_logger:
                 consumer._handle_reading(reading)
 
                 mock_logger.info.assert_called_once()
@@ -62,7 +62,7 @@ class TestLoggingConsumer:
                 data=RENOGY_RAW_DATA,
             )
 
-            with patch("pisolar.services.consumers.logger") as mock_logger:
+            with patch("pisolar.services.consumers.LoggingConsumer._logger") as mock_logger:
                 consumer._handle_reading(reading)
 
                 mock_logger.info.assert_called_once()

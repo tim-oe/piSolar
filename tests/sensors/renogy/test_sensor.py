@@ -33,7 +33,7 @@ class TestRenogySensor:
         sensor = RenogySensor(config=RENOGY_BT_CONFIG)
         assert sensor._reader.connection_type == "bluetooth"
 
-    @patch("pisolar.sensors.renogy.bluetooth_reader._bluetooth_available")
+    @patch("pisolar.sensors.renogy.bluetooth_reader.BluetoothReader._bluetooth_available")
     @patch("bleak.BleakScanner")
     @patch("renogy_ble.RenogyBLEDevice")
     @patch("renogy_ble.RenogyBleClient")
@@ -93,7 +93,7 @@ class TestRenogySensor:
         assert readings[0].model == "RNG-CTRL-RVR20"
         assert readings[0].battery_voltage == 13.2
 
-    @patch("pisolar.sensors.renogy.bluetooth_reader._bluetooth_available")
+    @patch("pisolar.sensors.renogy.bluetooth_reader.BluetoothReader._bluetooth_available")
     def test_read_no_bluetooth(self, mock_bt_available):
         """Test read fails gracefully when Bluetooth not available."""
         mock_bt_available.return_value = False
@@ -103,7 +103,7 @@ class TestRenogySensor:
         with pytest.raises(RuntimeError, match="No powered Bluetooth adapter"):
             sensor.read()
 
-    @patch("pisolar.sensors.renogy.bluetooth_reader._bluetooth_available")
+    @patch("pisolar.sensors.renogy.bluetooth_reader.BluetoothReader._bluetooth_available")
     @patch("bleak.BleakScanner")
     def test_read_device_not_found(self, mock_scanner_class, mock_bt_available):
         """Test read fails when device not found during scan."""
@@ -123,7 +123,7 @@ class TestRenogySensor:
         with pytest.raises(RuntimeError, match="Could not find Renogy device"):
             sensor.read()
 
-    @patch("pisolar.sensors.renogy.bluetooth_reader._bluetooth_available")
+    @patch("pisolar.sensors.renogy.bluetooth_reader.BluetoothReader._bluetooth_available")
     @patch("bleak.BleakScanner")
     @patch("renogy_ble.RenogyBLEDevice")
     @patch("renogy_ble.RenogyBleClient")
@@ -166,7 +166,7 @@ class TestRenogySensor:
         with pytest.raises(RuntimeError, match="Failed to read from Renogy device"):
             sensor.read()
 
-    @patch("pisolar.sensors.renogy.bluetooth_reader._bluetooth_available")
+    @patch("pisolar.sensors.renogy.bluetooth_reader.BluetoothReader._bluetooth_available")
     @patch("bleak.BleakScanner")
     @patch("renogy_ble.RenogyBLEDevice")
     @patch("renogy_ble.RenogyBleClient")

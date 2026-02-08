@@ -1,32 +1,19 @@
 """Bluetooth reader for Renogy BT-1/BT-2 modules using renogy-ble library."""
 
-import asyncio
 import time
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any
 
 from pisolar.config.renogy_config import DEFAULT_MAX_RETRIES, DEFAULT_SCAN_TIMEOUT
-from pisolar.logging_config import get_logger
+from pisolar.config.renogy_device_type import DeviceType
 from pisolar.sensors.renogy.reader import RenogyReader
 
-logger = get_logger("sensors.renogy.bluetooth")
-
-# Supported device types from renogy-ble
-DeviceType = Literal["controller", "dcc", "rover", "wanderer"]
+if TYPE_CHECKING:
+    from bleak import BleakScanner
+    from renogy_ble import RenogyBleClient, RenogyBLEDevice
 
 # Delay between retry attempts
 _RETRY_DELAY = 2.0  # seconds between retries
-
-
-def _bluetooth_available() -> bool:
-    """Return True if a Bluetooth adapter is present (Linux sysfs), or on non-Linux."""
-    bt = Path("/sys/class/bluetooth")
-    if not bt.exists():
-        return True  # non-Linux or no sysfs; let the library handle it
-    for adapter in bt.iterdir():
-        if adapter.is_dir() and adapter.name.startswith("hci"):
-            return True
-    return False
 
 
 class BluetoothReader(RenogyReader):
@@ -36,7 +23,7 @@ class BluetoothReader(RenogyReader):
         self,
         mac_address: str,
         device_alias: str = "BT-2",
-        device_type: DeviceType = "controller",
+        device_type: DeviceType = DeviceType.CONTROLLER,
         scan_timeout: float = DEFAULT_SCAN_TIMEOUT,
         max_retries: int = DEFAULT_MAX_RETRIES,
     ) -> None:
@@ -49,11 +36,11 @@ class BluetoothReader(RenogyReader):
             scan_timeout: Timeout in seconds for BLE scanning
             max_retries: Number of full scan+connect retry attempts
         """
+        super().__init__(max_retries=max_retries, retry_delay=_RETRY_DELAY)
         self._mac_address = mac_address.upper()
         self._device_alias = device_alias
         self._device_type: DeviceType = device_type
         self._scan_timeout = scan_timeout
-        self._max_retries = max_retries
 
     @property
     def device_name(self) -> str:
@@ -69,7 +56,18 @@ class BluetoothReader(RenogyReader):
         """Clean up resources (no persistent connection for BLE)."""
         pass
 
-    async def read(self) -> dict[str, Any]:
+    @staticmethod
+    def _bluetooth_available() -> bool:
+        """Return True if a Bluetooth adapter is present (Linux sysfs), or on non-Linux."""
+        bt = Path("/sys/class/bluetooth")
+        if not bt.exists():
+            return True  # non-Linux or no sysfs; let the library handle it
+        for adapter in bt.iterdir():
+            if adapter.is_dir() and adapter.name.startswith("hci"):
+                return True
+        return False
+
+    async def _read_implementation(self) -> dict[str, Any]:
         """Read data from the Renogy BT module via Bluetooth.
 
         Returns:
@@ -78,55 +76,27 @@ class BluetoothReader(RenogyReader):
         Raises:
             RuntimeError: If Bluetooth is not available or read fails.
         """
-        if not _bluetooth_available():
+        if not self._bluetooth_available():
             raise RuntimeError(
                 "No powered Bluetooth adapter found. Turn on Bluetooth and try again."
             )
 
+        # Import at runtime to allow mocking in tests
         from bleak import BleakScanner
         from renogy_ble import RenogyBleClient, RenogyBLEDevice
 
-        last_error: Exception | None = None
-
-        for attempt in range(1, self._max_retries + 1):
-            try:
-                return await self._attempt_read(
-                    BleakScanner, RenogyBleClient, RenogyBLEDevice
-                )
-            except Exception as e:
-                last_error = e
-                if attempt < self._max_retries:
-                    logger.warning(
-                        "Attempt %d/%d failed for %s: %s. Retrying in %.1fs...",
-                        attempt,
-                        self._max_retries,
-                        self._device_alias,
-                        str(e),
-                        _RETRY_DELAY,
-                    )
-                    await asyncio.sleep(_RETRY_DELAY)
-                else:
-                    logger.error(
-                        "All %d attempts failed for %s",
-                        self._max_retries,
-                        self._device_alias,
-                    )
-
-        raise RuntimeError(
-            f"Failed to read from Renogy device after {self._max_retries} attempts: "
-            f"{last_error}"
-        )
+        return await self._attempt_read(BleakScanner, RenogyBleClient, RenogyBLEDevice)
 
     async def _attempt_read(
         self,
-        scanner_class: type,
-        client_class: type,
-        device_class: type,
+        scanner_class: "type[BleakScanner]",
+        client_class: "type[RenogyBleClient]",
+        device_class: "type[RenogyBLEDevice]",
     ) -> dict[str, Any]:
         """Single attempt to scan and read from the device."""
         attempt_start = time.perf_counter()
 
-        logger.debug(
+        self._logger.debug(
             "Scanning for Renogy device %s (timeout: %.1fs)...",
             self._mac_address,
             self._scan_timeout,
@@ -141,16 +111,16 @@ class BluetoothReader(RenogyReader):
         scan_elapsed_ms = (time.perf_counter() - attempt_start) * 1000
 
         if device is None:
-            logger.debug("Scan completed in %.1fms - device not found", scan_elapsed_ms)
+            self._logger.debug("Scan completed in %.1fms - device not found", scan_elapsed_ms)
             raise RuntimeError(
                 f"Could not find Renogy device with MAC address {self._mac_address}. "
                 "Ensure the device is powered on and in range."
             )
 
-        logger.debug("Found device: %s (scan: %.1fms)", device.name, scan_elapsed_ms)
+        self._logger.debug("Found device: %s (scan: %.1fms)", device.name, scan_elapsed_ms)
 
         # Map device_type to renogy-ble expected format
-        ble_device_type = self._device_type
+        ble_device_type = self._device_type.value
         if ble_device_type in ("rover", "wanderer"):
             ble_device_type = "controller"
 
@@ -188,13 +158,13 @@ class BluetoothReader(RenogyReader):
         data["__total_ms"] = round(total_elapsed_ms, 1)
 
         # Log all fields received for debugging
-        logger.debug(
+        self._logger.debug(
             "Raw data fields from %s: %s",
             self._device_alias,
             list(result.parsed_data.keys()),
         )
 
-        logger.info(
+        self._logger.info(
             "Read %d field(s) from %s via Bluetooth "
             "(scan: %.1fms, connect+read: %.1fms, total: %.1fms)",
             len(result.parsed_data),
