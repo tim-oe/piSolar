@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-from pisolar.sensors.temperature import TemperatureSensor
+from pisolar.sensors.temperature.sensor import TemperatureSensor
 from tests.fixtures import TEMPERATURE_SENSORS
 
 

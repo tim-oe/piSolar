@@ -177,7 +177,7 @@ class TestReadOnceCommand:
     @patch("pisolar.cli.RenogySensor")
     def test_read_once_with_renogy_sensor(self, mock_renogy_class, runner, tmp_path):
         """Test read-once command with Renogy sensor uses to_dict()."""
-        from pisolar.sensors.renogy import SolarReading
+        from pisolar.sensors.renogy.reading import SolarReading
         from tests.fixtures import RENOGY_RAW_DATA
 
         # Create a real SolarReading to test to_dict() is called

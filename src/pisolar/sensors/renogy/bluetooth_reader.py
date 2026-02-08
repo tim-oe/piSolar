@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from pisolar.config.renogy_config import DEFAULT_MAX_RETRIES, DEFAULT_SCAN_TIMEOUT
+from pisolar.config.renogy_defaults import DEFAULT_MAX_RETRIES, DEFAULT_SCAN_TIMEOUT
 from pisolar.config.renogy_device_type import DeviceType
 from pisolar.sensors.renogy.reader import RenogyReader
 

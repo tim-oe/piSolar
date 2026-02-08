@@ -3,8 +3,8 @@
 from unittest.mock import MagicMock, patch
 
 from pisolar.event_bus import EventBus
-from pisolar.sensors.renogy import SolarReading
-from pisolar.sensors.temperature import TemperatureReading
+from pisolar.sensors.renogy.reading import SolarReading
+from pisolar.sensors.temperature.reading import TemperatureReading
 from pisolar.services.metrics import SENSOR_READING_EVENT, MetricsService
 from tests.fixtures import RENOGY_RAW_DATA
 

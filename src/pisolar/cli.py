@@ -14,7 +14,7 @@ import sys
 
 import click
 
-from pisolar.config import Settings
+from pisolar.config.settings import Settings
 from pisolar.logging_config import get_logger, setup_logging
 from pisolar.scheduler import SchedulerService
 from pisolar.sensors.renogy.sensor import RenogySensor

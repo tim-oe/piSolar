@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from pisolar.config.renogy_config import RenogyBluetoothSensorConfig
-from pisolar.sensors.renogy import RenogySensor
+from pisolar.sensors.renogy.sensor import RenogySensor
 from tests.fixtures import RENOGY_BT_CONFIG, RENOGY_SERIAL_CONFIG
 
 

@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from pisolar.sensors.temperature import TemperatureReading
+from pisolar.sensors.temperature.reading import TemperatureReading
 from tests.fixtures import TEMPERATURE_READINGS, TEMPERATURE_READINGS_COLD
 
 

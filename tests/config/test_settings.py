@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from pisolar.config import Settings
+from pisolar.config.settings import Settings
 
 
 class TestSettings:

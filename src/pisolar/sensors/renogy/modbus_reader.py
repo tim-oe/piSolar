@@ -4,7 +4,7 @@ import asyncio
 import time
 from typing import TYPE_CHECKING, Any
 
-from pisolar.config.renogy_config import (
+from pisolar.config.renogy_defaults import (
     DEFAULT_BAUD_RATE,
     DEFAULT_MAX_RETRIES,
     DEFAULT_SLAVE_ADDRESS,
