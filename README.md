@@ -92,7 +92,7 @@ poetry run pytest tests/test_pisolar.py    # Run a single test file
 poetry run pytest tests/test_pisolar.py::test_version  # Run a single test
 poetry run pytest -k "test_read"           # Run tests matching pattern
 poetry run pytest --cov                    # Run tests with coverage
-poetry run pytest --cov --cov-report=html  # Coverage with HTML report
+poetry run pytest tests/ --cov=src/pisolar --cov-report=html --cov-report=term  # Coverage with HTML report
 ```
 
 ## Systemd Service

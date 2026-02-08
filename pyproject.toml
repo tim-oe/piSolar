@@ -54,10 +54,14 @@ addopts = "-v --tb=short"
 [tool.coverage.run]
 source = ["src/pisolar"]
 branch = true
+data_file = "reports/.coverage"
 
 [tool.coverage.report]
 show_missing = true
 skip_empty = true
+
+[tool.coverage.html]
+directory = "reports/htmlcov"
 
 [tool.black]
 line-length = 88
