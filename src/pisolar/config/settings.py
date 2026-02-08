@@ -17,8 +17,12 @@ class Settings(BaseModel):
     renogy: RenogyConfig = Field(default_factory=RenogyConfig)
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
 
-    @classmethod
+    @classmethod  # type: ignore[misc]
     def from_yaml(cls, config_path: str) -> "Settings":
         """Load settings from YAML file with environment variable substitution."""
         config = parse_config(config_path)
+        if config is None:
+            raise ValueError(f"Failed to parse config from {config_path}")
+        if not isinstance(config, dict):
+            raise TypeError(f"Expected dict config, got {type(config)}")
         return cls(**config)
