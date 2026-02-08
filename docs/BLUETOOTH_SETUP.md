@@ -1,6 +1,8 @@
-# Bluetooth and Renogy BT-2 Setup Guide
+# Bluetooth and Renogy BT-1 and BT-2 Setup Guide
 
- **✅ VERIFIED coonectivity - BT-1 BT-2**
+**✅ VERIFIED connectivity - BT-1 BT-2**
+
+---
 
 This guide covers setting up Bluetooth on Raspberry Pi and discovering Renogy BT-1/BT-2 Bluetooth modules.
 

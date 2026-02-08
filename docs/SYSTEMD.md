@@ -40,8 +40,7 @@ cd /opt/pisolar
 sudo python -m venv .venv
 sudo .venv/bin/pip install /path/to/piSolar
 
-# For Bluetooth support, also install renogy-bt dependencies
-sudo .venv/bin/pip install bleak
+# Dependencies including Bluetooth are installed automatically
 ```
 
 ### 4. Install and Enable Service
