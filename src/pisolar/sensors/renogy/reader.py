@@ -2,15 +2,13 @@
 
 import asyncio
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Union
+from typing import Any, Union
 
+from pisolar.config.renogy_bluetooth_sensor_config import (
+    RenogyBluetoothSensorConfig,
+)
+from pisolar.config.renogy_serial_sensor_config import RenogySerialSensorConfig
 from pisolar.logging_config import get_logger
-
-if TYPE_CHECKING:
-    from pisolar.config.renogy_bluetooth_sensor_config import (
-        RenogyBluetoothSensorConfig,
-    )
-    from pisolar.config.renogy_serial_sensor_config import RenogySerialSensorConfig
 
 
 class RenogyReader(ABC):
@@ -33,9 +31,10 @@ class RenogyReader(ABC):
         self._max_retries = max_retries
         self._retry_delay = retry_delay
 
-    @staticmethod
+    @classmethod  # type: ignore[misc]
     def create_reader(
-        config: Union["RenogyBluetoothSensorConfig", "RenogySerialSensorConfig"]
+        cls,
+        config: Union[RenogyBluetoothSensorConfig, RenogySerialSensorConfig],
     ) -> "RenogyReader":
         """Factory method to create appropriate reader based on configuration.
 
@@ -48,11 +47,8 @@ class RenogyReader(ABC):
         Raises:
             ValueError: If config type is not recognized
         """
-        # Import here to avoid circular imports
-        from pisolar.config.renogy_bluetooth_sensor_config import (
-            RenogyBluetoothSensorConfig,
-        )
-        from pisolar.config.renogy_serial_sensor_config import RenogySerialSensorConfig
+        # Import concrete implementations here to avoid circular imports
+        # (these modules import RenogyReader, so we must defer their import)
         from pisolar.sensors.renogy.bluetooth_reader import BluetoothReader
         from pisolar.sensors.renogy.modbus_reader import ModbusReader
 

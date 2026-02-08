@@ -2,22 +2,24 @@
 
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
+
+from bleak import BleakScanner
+from renogy_ble import RenogyBleClient, RenogyBLEDevice
 
 from pisolar.config.renogy_defaults import DEFAULT_MAX_RETRIES, DEFAULT_SCAN_TIMEOUT
 from pisolar.config.renogy_device_type import DeviceType
 from pisolar.sensors.renogy.reader import RenogyReader
-
-if TYPE_CHECKING:
-    from bleak import BleakScanner
-    from renogy_ble import RenogyBleClient, RenogyBLEDevice
 
 # Delay between retry attempts
 _RETRY_DELAY = 2.0  # seconds between retries
 
 
 class BluetoothReader(RenogyReader):
-    """Bluetooth reader for Renogy BT-1/BT-2 modules using renogy-ble library."""
+    """Bluetooth reader for Renogy BT-1/BT-2 modules using renogy-ble library.
+    
+    Uses dependency injection for Bluetooth components to enable testing with mocks.
+    """
 
     def __init__(
         self,
@@ -41,6 +43,11 @@ class BluetoothReader(RenogyReader):
         self._device_alias = device_alias
         self._device_type: DeviceType = device_type
         self._scan_timeout = scan_timeout
+        
+        # Dependencies that can be overridden in tests by setting instance variables
+        self._scanner_class = BleakScanner
+        self._client_class = RenogyBleClient
+        self._device_class = RenogyBLEDevice
 
     @property
     def device_name(self) -> str:
@@ -81,18 +88,9 @@ class BluetoothReader(RenogyReader):
                 "No powered Bluetooth adapter found. Turn on Bluetooth and try again."
             )
 
-        # Import at runtime to allow mocking in tests
-        from bleak import BleakScanner
-        from renogy_ble import RenogyBleClient, RenogyBLEDevice
+        return await self._attempt_read()
 
-        return await self._attempt_read(BleakScanner, RenogyBleClient, RenogyBLEDevice)
-
-    async def _attempt_read(
-        self,
-        scanner_class: "type[BleakScanner]",
-        client_class: "type[RenogyBleClient]",
-        device_class: "type[RenogyBLEDevice]",
-    ) -> dict[str, Any]:
+    async def _attempt_read(self) -> dict[str, Any]:
         """Single attempt to scan and read from the device."""
         attempt_start = time.perf_counter()
 
@@ -103,7 +101,7 @@ class BluetoothReader(RenogyReader):
         )
 
         # Use class method directly - more reliable than context manager
-        device = await scanner_class.find_device_by_address(
+        device = await self._scanner_class.find_device_by_address(
             self._mac_address,
             timeout=self._scan_timeout,
         )
@@ -125,7 +123,7 @@ class BluetoothReader(RenogyReader):
             ble_device_type = "controller"
 
         # Create renogy-ble device wrapper
-        renogy_device = device_class(
+        renogy_device = self._device_class(
             ble_device=device,
             advertisement_rssi=None,
             device_type=ble_device_type,
@@ -133,7 +131,7 @@ class BluetoothReader(RenogyReader):
 
         # Create client and read
         connect_start = time.perf_counter()
-        client = client_class(max_attempts=5)
+        client = self._client_class(max_attempts=5)
         result = await client.read_device(renogy_device)
         connect_elapsed_ms = (time.perf_counter() - connect_start) * 1000
 

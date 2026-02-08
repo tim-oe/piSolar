@@ -1,7 +1,7 @@
 """Tests for ModbusReader."""
 
 import asyncio
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -243,8 +243,7 @@ class TestModbusReader:
         mock_client.read_holding_registers.side_effect = mock_read_registers
         return mock_client
 
-    @patch("pymodbus.client.ModbusSerialClient")
-    def test_read_success(self, mock_client_class):
+    def test_read_success(self):
         """Test successful Modbus read."""
         mock_client = MagicMock()
         mock_client.connect.return_value = True
@@ -254,13 +253,15 @@ class TestModbusReader:
         mock_result.registers = [100]
 
         mock_client.read_holding_registers.return_value = mock_result
-        mock_client_class.return_value = mock_client
+        
+        mock_client_class = MagicMock(return_value=mock_client)
 
         reader = ModbusReader(
             device_path="/dev/ttyUSB0",
             device_name="test",
             max_retries=1,
         )
+        reader._client_class = mock_client_class
 
         data = asyncio.run(reader.read())
 
@@ -269,17 +270,17 @@ class TestModbusReader:
         mock_client.connect.assert_called_once()
         mock_client.close.assert_called_once()
 
-    @patch("pymodbus.client.ModbusSerialClient")
-    def test_read_with_sample_data(self, mock_client_class):
+    def test_read_with_sample_data(self):
         """Test reading with realistic sample data and verify all parsed values."""
         mock_client = self._create_mock_client(SAMPLE_MODBUS_DATA)
-        mock_client_class.return_value = mock_client
+        mock_client_class = MagicMock(return_value=mock_client)
 
         reader = ModbusReader(
             device_path="/dev/ttyUSB0",
             device_name="wanderer",
             max_retries=1,
         )
+        reader._client_class = mock_client_class
 
         data = asyncio.run(reader.read())
 
@@ -322,8 +323,7 @@ class TestModbusReader:
         assert data["__device"] == "wanderer"
         assert data["__client"] == "ModbusReader"
 
-    @patch("pymodbus.client.ModbusSerialClient")
-    def test_read_with_negative_temperatures(self, mock_client_class):
+    def test_read_with_negative_temperatures(self):
         """Test reading with negative temperatures (cold weather).
 
         Using sign+magnitude format per Renogy protocol:
@@ -334,34 +334,35 @@ class TestModbusReader:
         cold_weather_data[0x0103] = 0x8A8A
 
         mock_client = self._create_mock_client(cold_weather_data)
-        mock_client_class.return_value = mock_client
+        mock_client_class = MagicMock(return_value=mock_client)
 
         reader = ModbusReader(
             device_path="/dev/ttyUSB0",
             device_name="test",
             max_retries=1,
         )
+        reader._client_class = mock_client_class
 
         data = asyncio.run(reader.read())
 
         assert data["controller_temperature"] == -10
         assert data["battery_temperature"] == -10
 
-    @patch("pymodbus.client.ModbusSerialClient")
-    def test_read_user_reported_value(self, mock_client_class):
+    def test_read_user_reported_value(self):
         """Test parsing the exact value the user reported (6400 = 0x1900)."""
         user_data = SAMPLE_MODBUS_DATA.copy()
         # User reported 6400 which is 0x1900 = controller=25°C, battery=0°C
         user_data[0x0103] = 6400  # 0x1900 in decimal
 
         mock_client = self._create_mock_client(user_data)
-        mock_client_class.return_value = mock_client
+        mock_client_class = MagicMock(return_value=mock_client)
 
         reader = ModbusReader(
             device_path="/dev/ttyUSB0",
             device_name="wanderer",
             max_retries=1,
         )
+        reader._client_class = mock_client_class
 
         data = asyncio.run(reader.read())
 
@@ -369,33 +370,33 @@ class TestModbusReader:
         assert data["controller_temperature"] == 25
         assert data["battery_temperature"] == 0
 
-    @patch("pymodbus.client.ModbusSerialClient")
-    def test_read_connection_failure(self, mock_client_class):
+    def test_read_connection_failure(self):
         """Test read fails when Modbus connection fails."""
         mock_client = MagicMock()
         mock_client.connect.return_value = False
-        mock_client_class.return_value = mock_client
+        mock_client_class = MagicMock(return_value=mock_client)
 
         reader = ModbusReader(
             device_path="/dev/ttyUSB0",
             device_name="test",
             max_retries=1,
         )
+        reader._client_class = mock_client_class
 
         with pytest.raises(RuntimeError, match="Failed to connect"):
             asyncio.run(reader.read())
 
-    @patch("pymodbus.client.ModbusSerialClient")
-    def test_read_min_values(self, mock_client_class):
+    def test_read_min_values(self):
         """Test reading with all minimum values (zeros)."""
         mock_client = self._create_mock_client(SAMPLE_MIN_VALUES)
-        mock_client_class.return_value = mock_client
+        mock_client_class = MagicMock(return_value=mock_client)
 
         reader = ModbusReader(
             device_path="/dev/ttyUSB0",
             device_name="test",
             max_retries=1,
         )
+        reader._client_class = mock_client_class
 
         data = asyncio.run(reader.read())
 
@@ -415,17 +416,17 @@ class TestModbusReader:
         assert data["power_consumption_today"] == 0.0
         assert data["charging_status"] == "deactivated"
 
-    @patch("pymodbus.client.ModbusSerialClient")
-    def test_read_max_realistic_values(self, mock_client_class):
+    def test_read_max_realistic_values(self):
         """Test reading with maximum realistic operating values."""
         mock_client = self._create_mock_client(SAMPLE_MAX_VALUES)
-        mock_client_class.return_value = mock_client
+        mock_client_class = MagicMock(return_value=mock_client)
 
         reader = ModbusReader(
             device_path="/dev/ttyUSB0",
             device_name="test",
             max_retries=1,
         )
+        reader._client_class = mock_client_class
 
         data = asyncio.run(reader.read())
 
@@ -448,21 +449,21 @@ class TestModbusReader:
         # Charging status floating
         assert data["charging_status"] == "floating"
 
-    @patch("pymodbus.client.ModbusSerialClient")
-    def test_read_16bit_max_values(self, mock_client_class):
+    def test_read_16bit_max_values(self):
         """Test reading with 16-bit maximum values (0xFFFF = 65535).
 
         Verifies unsigned integer overflow handling for all voltage,
         current, and power fields.
         """
         mock_client = self._create_mock_client(SAMPLE_16BIT_MAX)
-        mock_client_class.return_value = mock_client
+        mock_client_class = MagicMock(return_value=mock_client)
 
         reader = ModbusReader(
             device_path="/dev/ttyUSB0",
             device_name="test",
             max_retries=1,
         )
+        reader._client_class = mock_client_class
 
         data = asyncio.run(reader.read())
 
@@ -494,20 +495,20 @@ class TestModbusReader:
         assert data["charging_amp_hours_today"] == 65535
         assert data["discharging_amp_hours_today"] == 65535
 
-    @patch("pymodbus.client.ModbusSerialClient")
-    def test_read_extreme_cold_temperatures(self, mock_client_class):
+    def test_read_extreme_cold_temperatures(self):
         """Test reading with extreme cold temperatures (-127°C).
 
         Sign+magnitude format: 0xFF = 0x80 (sign) + 0x7F (127) = -127°C
         """
         mock_client = self._create_mock_client(SAMPLE_EXTREME_COLD)
-        mock_client_class.return_value = mock_client
+        mock_client_class = MagicMock(return_value=mock_client)
 
         reader = ModbusReader(
             device_path="/dev/ttyUSB0",
             device_name="test",
             max_retries=1,
         )
+        reader._client_class = mock_client_class
 
         data = asyncio.run(reader.read())
 
@@ -515,17 +516,17 @@ class TestModbusReader:
         assert data["controller_temperature"] == -127
         assert data["battery_temperature"] == -127
 
-    @patch("pymodbus.client.ModbusSerialClient")
-    def test_read_extreme_hot_temperatures(self, mock_client_class):
+    def test_read_extreme_hot_temperatures(self):
         """Test reading with extreme hot temperatures (+127°C)."""
         mock_client = self._create_mock_client(SAMPLE_EXTREME_HOT)
-        mock_client_class.return_value = mock_client
+        mock_client_class = MagicMock(return_value=mock_client)
 
         reader = ModbusReader(
             device_path="/dev/ttyUSB0",
             device_name="test",
             max_retries=1,
         )
+        reader._client_class = mock_client_class
 
         data = asyncio.run(reader.read())
 
@@ -533,17 +534,17 @@ class TestModbusReader:
         assert data["controller_temperature"] == 127
         assert data["battery_temperature"] == 127
 
-    @patch("pymodbus.client.ModbusSerialClient")
-    def test_read_mixed_extreme_temperatures(self, mock_client_class):
+    def test_read_mixed_extreme_temperatures(self):
         """Test reading with mixed extreme temps (hot controller, cold battery)."""
         mock_client = self._create_mock_client(SAMPLE_MIXED_EXTREME_TEMPS)
-        mock_client_class.return_value = mock_client
+        mock_client_class = MagicMock(return_value=mock_client)
 
         reader = ModbusReader(
             device_path="/dev/ttyUSB0",
             device_name="test",
             max_retries=1,
         )
+        reader._client_class = mock_client_class
 
         data = asyncio.run(reader.read())
 

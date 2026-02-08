@@ -2,7 +2,10 @@
 
 import asyncio
 import time
-from typing import TYPE_CHECKING, Any
+from functools import partial
+from typing import Any
+
+from pymodbus.client import ModbusSerialClient
 
 from pisolar.config.renogy_defaults import (
     DEFAULT_BAUD_RATE,
@@ -11,9 +14,6 @@ from pisolar.config.renogy_defaults import (
 )
 from pisolar.config.renogy_device_type import DeviceType
 from pisolar.sensors.renogy.reader import RenogyReader
-
-if TYPE_CHECKING:
-    from pymodbus.client import ModbusSerialClient
 
 # Delay between retry attempts
 _RETRY_DELAY = 1.0  # seconds between retries
@@ -105,7 +105,10 @@ def _parse_temperature_register(raw_value: int) -> tuple[int, int]:
 
 
 class ModbusReader(RenogyReader):
-    """Modbus/Serial reader for Renogy charge controllers using pymodbus."""
+    """Modbus/Serial reader for Renogy charge controllers using pymodbus.
+    
+    Uses dependency injection for Modbus client to enable testing with mocks.
+    """
 
     def __init__(
         self,
@@ -133,6 +136,9 @@ class ModbusReader(RenogyReader):
         self._baud_rate = baud_rate
         self._slave_address = slave_address
         self._client = None
+        
+        # Dependency that can be overridden in tests by setting instance variable
+        self._client_class = ModbusSerialClient
 
     @property
     def device_name(self) -> str:
@@ -164,19 +170,15 @@ class ModbusReader(RenogyReader):
         """
         # Run synchronous Modbus operations in executor
         loop = asyncio.get_running_loop()
-        from functools import partial
         # Type checker confused about bound method signatures - this is correct
         return await loop.run_in_executor(None, partial(self._read_sync))  # type: ignore[arg-type]
 
     def _read_sync(self) -> dict[str, Any]:
         """Synchronous implementation of Modbus read."""
-        # Import at runtime to allow mocking in tests
-        from pymodbus.client import ModbusSerialClient
-
         start_time = time.perf_counter()
 
-        # Create client if not exists
-        client = ModbusSerialClient(
+        # Create client using injected class
+        client = self._client_class(
             port=self._device_path,
             baudrate=self._baud_rate,
             bytesize=8,
