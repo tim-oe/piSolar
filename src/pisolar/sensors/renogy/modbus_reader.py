@@ -164,7 +164,9 @@ class ModbusReader(RenogyReader):
         """
         # Run synchronous Modbus operations in executor
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self._read_sync)
+        from functools import partial
+        # Type checker confused about bound method signatures - this is correct
+        return await loop.run_in_executor(None, partial(self._read_sync))  # type: ignore[arg-type]
 
     def _read_sync(self) -> dict[str, Any]:
         """Synchronous implementation of Modbus read."""
