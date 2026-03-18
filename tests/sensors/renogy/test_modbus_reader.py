@@ -253,7 +253,7 @@ class TestModbusReader:
         mock_result.registers = [100]
 
         mock_client.read_holding_registers.return_value = mock_result
-        
+
         mock_client_class = MagicMock(return_value=mock_client)
 
         reader = ModbusReader(

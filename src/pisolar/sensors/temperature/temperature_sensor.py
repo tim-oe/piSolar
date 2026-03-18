@@ -12,7 +12,7 @@ from w1thermsensor.errors import (
 from pisolar.logging_config import get_logger
 from pisolar.sensors.base_sensor import BaseSensor
 from pisolar.sensors.sensor_reading import SensorReading
-from pisolar.sensors.temperature.reading import TemperatureReading
+from pisolar.sensors.temperature.temperature_reading import TemperatureReading
 
 
 class TemperatureSensor(BaseSensor):
@@ -55,7 +55,9 @@ class TemperatureSensor(BaseSensor):
                         sensor_type=Sensor.DS18B20, sensor_id=address
                     )
                 except Exception as e:
-                    self._logger.warning("Sensor %s (%s) not found: %s", name, address, e)
+                    self._logger.warning(
+                        "Sensor %s (%s) not found: %s", name, address, e
+                    )
                     continue
 
             sensor_start = time.perf_counter()

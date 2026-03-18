@@ -7,13 +7,13 @@ from typing import Any
 
 from pymodbus.client import ModbusSerialClient
 
+from pisolar.config.device_type import DeviceType
 from pisolar.config.renogy_defaults import (
     DEFAULT_BAUD_RATE,
     DEFAULT_MAX_RETRIES,
     DEFAULT_SLAVE_ADDRESS,
 )
-from pisolar.config.renogy_device_type import DeviceType
-from pisolar.sensors.renogy.reader import RenogyReader
+from pisolar.sensors.renogy.renogy_reader import RenogyReader
 
 # Delay between retry attempts
 _RETRY_DELAY = 1.0  # seconds between retries
@@ -106,7 +106,7 @@ def _parse_temperature_register(raw_value: int) -> tuple[int, int]:
 
 class ModbusReader(RenogyReader):
     """Modbus/Serial reader for Renogy charge controllers using pymodbus.
-    
+
     Uses dependency injection for Modbus client to enable testing with mocks.
     """
 
@@ -136,7 +136,7 @@ class ModbusReader(RenogyReader):
         self._baud_rate = baud_rate
         self._slave_address = slave_address
         self._client = None
-        
+
         # Dependency that can be overridden in tests by setting instance variable
         self._client_class = ModbusSerialClient
 

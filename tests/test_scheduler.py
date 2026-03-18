@@ -2,7 +2,7 @@
 
 import pytest
 
-from pisolar.scheduler import SchedulerService
+from pisolar.scheduler_service import SchedulerService
 
 
 class TestSchedulerService:

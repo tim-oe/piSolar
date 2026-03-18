@@ -16,12 +16,12 @@ import click
 
 from pisolar.config.settings import Settings
 from pisolar.logging_config import get_logger, setup_logging
-from pisolar.scheduler import SchedulerService
-from pisolar.sensors.renogy.sensor import RenogySensor
-from pisolar.sensors.temperature.reading import TemperatureReading
-from pisolar.sensors.temperature.sensor import TemperatureSensor
-from pisolar.services.consumers import LoggingConsumer
-from pisolar.services.metrics import MetricsService
+from pisolar.scheduler_service import SchedulerService
+from pisolar.sensors.renogy.renogy_sensor import RenogySensor
+from pisolar.sensors.temperature.temperature_reading import TemperatureReading
+from pisolar.sensors.temperature.temperature_sensor import TemperatureSensor
+from pisolar.services.logging_consumer import LoggingConsumer
+from pisolar.services.metrics_service import MetricsService
 
 DEFAULT_CONFIG = "/etc/pisolar/config.yaml"
 DEFAULT_LOG_CONFIG = "/etc/pisolar/logging.yaml"
@@ -165,7 +165,9 @@ def read_once(ctx: click.Context) -> None:
         for reading in readings:
             # Temperature sensors always return TemperatureReading
             temp_reading = reading  # type: TemperatureReading
-            click.echo(f"  [temp] {temp_reading.name}: {temp_reading.value:.2f} {temp_reading.unit}")
+            click.echo(
+                f"  [temp] {temp_reading.name}: {temp_reading.value:.2f} {temp_reading.unit}"
+            )
 
     if settings.renogy.enabled and settings.renogy.sensors:
         for sensor_config in settings.renogy.sensors:

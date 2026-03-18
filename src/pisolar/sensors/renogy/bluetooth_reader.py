@@ -7,9 +7,9 @@ from typing import Any
 from bleak import BleakScanner
 from renogy_ble import RenogyBleClient, RenogyBLEDevice
 
+from pisolar.config.device_type import DeviceType
 from pisolar.config.renogy_defaults import DEFAULT_MAX_RETRIES, DEFAULT_SCAN_TIMEOUT
-from pisolar.config.renogy_device_type import DeviceType
-from pisolar.sensors.renogy.reader import RenogyReader
+from pisolar.sensors.renogy.renogy_reader import RenogyReader
 
 # Delay between retry attempts
 _RETRY_DELAY = 2.0  # seconds between retries
@@ -17,7 +17,7 @@ _RETRY_DELAY = 2.0  # seconds between retries
 
 class BluetoothReader(RenogyReader):
     """Bluetooth reader for Renogy BT-1/BT-2 modules using renogy-ble library.
-    
+
     Uses dependency injection for Bluetooth components to enable testing with mocks.
     """
 
@@ -43,7 +43,7 @@ class BluetoothReader(RenogyReader):
         self._device_alias = device_alias
         self._device_type: DeviceType = device_type
         self._scan_timeout = scan_timeout
-        
+
         # Dependencies that can be overridden in tests by setting instance variables
         self._scanner_class = BleakScanner
         self._client_class = RenogyBleClient
@@ -109,13 +109,17 @@ class BluetoothReader(RenogyReader):
         scan_elapsed_ms = (time.perf_counter() - attempt_start) * 1000
 
         if device is None:
-            self._logger.debug("Scan completed in %.1fms - device not found", scan_elapsed_ms)
+            self._logger.debug(
+                "Scan completed in %.1fms - device not found", scan_elapsed_ms
+            )
             raise RuntimeError(
                 f"Could not find Renogy device with MAC address {self._mac_address}. "
                 "Ensure the device is powered on and in range."
             )
 
-        self._logger.debug("Found device: %s (scan: %.1fms)", device.name, scan_elapsed_ms)
+        self._logger.debug(
+            "Found device: %s (scan: %.1fms)", device.name, scan_elapsed_ms
+        )
 
         # Map device_type to renogy-ble expected format
         ble_device_type = self._device_type.value

@@ -3,7 +3,7 @@
 from pisolar.event_bus import get_event_bus
 from pisolar.logging_config import get_logger
 from pisolar.sensors.sensor_reading import SensorReading
-from pisolar.services.metrics import SENSOR_READING_EVENT
+from pisolar.services.metrics_service import SENSOR_READING_EVENT
 
 
 class LoggingConsumer:

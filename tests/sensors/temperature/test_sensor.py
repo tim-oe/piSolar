@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-from pisolar.sensors.temperature.sensor import TemperatureSensor
+from pisolar.sensors.temperature.temperature_sensor import TemperatureSensor
 from tests.fixtures import TEMPERATURE_SENSORS
 
 
@@ -14,7 +14,7 @@ class TestTemperatureSensor:
         sensor = TemperatureSensor(sensors=TEMPERATURE_SENSORS)
         assert sensor.sensor_type == "temperature"
 
-    @patch("pisolar.sensors.temperature.sensor.W1ThermSensor")
+    @patch("pisolar.sensors.temperature.temperature_sensor.W1ThermSensor")
     def test_read_sensors(self, mock_w1_class):
         """Test reading from temperature sensors."""
         # Mock sensor instances
@@ -35,7 +35,7 @@ class TestTemperatureSensor:
         assert readings[0].name == "temp 1"
         assert readings[0].value == 22.5
 
-    @patch("pisolar.sensors.temperature.sensor.W1ThermSensor")
+    @patch("pisolar.sensors.temperature.temperature_sensor.W1ThermSensor")
     def test_read_sensor_not_available(self, mock_w1_class):
         """Test handling when sensor is not found."""
         mock_w1_class.get_available_sensors.return_value = []
@@ -47,7 +47,7 @@ class TestTemperatureSensor:
         # Should return empty list, not raise
         assert len(readings) == 0
 
-    @patch("pisolar.sensors.temperature.sensor.W1ThermSensor")
+    @patch("pisolar.sensors.temperature.temperature_sensor.W1ThermSensor")
     def test_read_reset_value_error(self, mock_w1_class):
         """Test handling when sensor returns reset value (85°C power issue)."""
         from w1thermsensor.errors import ResetValueError
@@ -64,7 +64,7 @@ class TestTemperatureSensor:
         # Should return empty list, not raise
         assert len(readings) == 0
 
-    @patch("pisolar.sensors.temperature.sensor.W1ThermSensor")
+    @patch("pisolar.sensors.temperature.temperature_sensor.W1ThermSensor")
     def test_read_mixed_available(self, mock_w1_class):
         """Test reading when some sensors available, some not."""
         mock_sensor = MagicMock()

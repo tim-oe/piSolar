@@ -4,12 +4,12 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from pisolar.config.device_type import DeviceType
 from pisolar.config.renogy_defaults import (
     DEFAULT_BAUD_RATE,
     DEFAULT_MAX_RETRIES,
     DEFAULT_SLAVE_ADDRESS,
 )
-from pisolar.config.renogy_device_type import DeviceType
 
 
 class RenogySerialSensorConfig(BaseModel):

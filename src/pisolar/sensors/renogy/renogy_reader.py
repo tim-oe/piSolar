@@ -4,9 +4,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, Union
 
-from pisolar.config.renogy_bluetooth_sensor_config import (
-    RenogyBluetoothSensorConfig,
-)
+from pisolar.config.renogy_bluetooth_sensor_config import RenogyBluetoothSensorConfig
 from pisolar.config.renogy_serial_sensor_config import RenogySerialSensorConfig
 from pisolar.logging_config import get_logger
 
@@ -31,9 +29,8 @@ class RenogyReader(ABC):
         self._max_retries = max_retries
         self._retry_delay = retry_delay
 
-    @classmethod  # type: ignore[misc]
+    @staticmethod
     def create_reader(
-        cls,
         config: Union[RenogyBluetoothSensorConfig, RenogySerialSensorConfig],
     ) -> "RenogyReader":
         """Factory method to create appropriate reader based on configuration.

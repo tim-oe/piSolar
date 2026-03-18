@@ -1,8 +1,8 @@
 """Tests for BaseSensor abstract class."""
 
 from pisolar.sensors.base_sensor import BaseSensor
-from pisolar.sensors.renogy.reading import SolarReading
-from pisolar.sensors.temperature.reading import TemperatureReading
+from pisolar.sensors.renogy.solar_reading import SolarReading
+from pisolar.sensors.temperature.temperature_reading import TemperatureReading
 from tests.fixtures import RENOGY_RAW_DATA
 
 

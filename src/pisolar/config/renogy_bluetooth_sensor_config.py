@@ -4,11 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from pisolar.config.renogy_defaults import (
-    DEFAULT_MAX_RETRIES,
-    DEFAULT_SCAN_TIMEOUT,
-)
-from pisolar.config.renogy_device_type import DeviceType
+from pisolar.config.device_type import DeviceType
+from pisolar.config.renogy_defaults import DEFAULT_MAX_RETRIES, DEFAULT_SCAN_TIMEOUT
 
 
 class RenogyBluetoothSensorConfig(BaseModel):

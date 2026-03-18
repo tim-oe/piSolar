@@ -43,7 +43,9 @@ class EventBus:
             data: The event data to pass to handlers
         """
         handlers = self._subscribers.get(event_type, [])
-        self._logger.debug("Publishing event %s to %d handler(s)", event_type, len(handlers))
+        self._logger.debug(
+            "Publishing event %s to %d handler(s)", event_type, len(handlers)
+        )
 
         for handler in handlers:
             try:
@@ -62,7 +64,9 @@ class EventBus:
         if event_type in self._subscribers:
             try:
                 self._subscribers[event_type].remove(handler)
-                self._logger.debug("Unsubscribed handler from event type: %s", event_type)
+                self._logger.debug(
+                    "Unsubscribed handler from event type: %s", event_type
+                )
             except ValueError:
                 pass
 

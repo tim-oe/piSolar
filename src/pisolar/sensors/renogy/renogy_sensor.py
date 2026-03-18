@@ -11,8 +11,8 @@ from pisolar.config.renogy_config import (
 )
 from pisolar.logging_config import get_logger
 from pisolar.sensors.base_sensor import BaseSensor
-from pisolar.sensors.renogy.reader import RenogyReader
-from pisolar.sensors.renogy.reading import SolarReading
+from pisolar.sensors.renogy.renogy_reader import RenogyReader
+from pisolar.sensors.renogy.solar_reading import SolarReading
 from pisolar.sensors.sensor_reading import SensorReading
 
 # Type alias for sensor config union

@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from pisolar.config.renogy_config import RenogyBluetoothSensorConfig
-from pisolar.sensors.renogy.sensor import RenogySensor
+from pisolar.sensors.renogy.renogy_sensor import RenogySensor
 from tests.fixtures import RENOGY_BT_CONFIG, RENOGY_SERIAL_CONFIG
 
 
@@ -33,7 +33,9 @@ class TestRenogySensor:
         sensor = RenogySensor(config=RENOGY_BT_CONFIG)
         assert sensor._reader.connection_type == "bluetooth"
 
-    @patch("pisolar.sensors.renogy.bluetooth_reader.BluetoothReader._bluetooth_available")
+    @patch(
+        "pisolar.sensors.renogy.bluetooth_reader.BluetoothReader._bluetooth_available"
+    )
     def test_read_success(self, mock_bt_available):
         """Test successful read from Renogy sensor using Bluetooth with dependency injection."""
         mock_bt_available.return_value = True
@@ -81,19 +83,21 @@ class TestRenogySensor:
             max_retries=1,
         )
         sensor = RenogySensor(config=config)
-        
+
         # Inject mocks into the reader after creation
         sensor._reader._scanner_class = mock_scanner_class
         sensor._reader._client_class = mock_client_class
         sensor._reader._device_class = mock_device_class
-        
+
         readings = sensor.read()
 
         assert len(readings) == 1
         assert readings[0].model == "RNG-CTRL-RVR20"
         assert readings[0].battery_voltage == 13.2
 
-    @patch("pisolar.sensors.renogy.bluetooth_reader.BluetoothReader._bluetooth_available")
+    @patch(
+        "pisolar.sensors.renogy.bluetooth_reader.BluetoothReader._bluetooth_available"
+    )
     def test_read_no_bluetooth(self, mock_bt_available):
         """Test read fails gracefully when Bluetooth not available."""
         mock_bt_available.return_value = False
@@ -103,7 +107,9 @@ class TestRenogySensor:
         with pytest.raises(RuntimeError, match="No powered Bluetooth adapter"):
             sensor.read()
 
-    @patch("pisolar.sensors.renogy.bluetooth_reader.BluetoothReader._bluetooth_available")
+    @patch(
+        "pisolar.sensors.renogy.bluetooth_reader.BluetoothReader._bluetooth_available"
+    )
     def test_read_device_not_found(self, mock_bt_available):
         """Test read fails when device not found during scan."""
         mock_bt_available.return_value = True
@@ -124,7 +130,9 @@ class TestRenogySensor:
         with pytest.raises(RuntimeError, match="Could not find Renogy device"):
             sensor.read()
 
-    @patch("pisolar.sensors.renogy.bluetooth_reader.BluetoothReader._bluetooth_available")
+    @patch(
+        "pisolar.sensors.renogy.bluetooth_reader.BluetoothReader._bluetooth_available"
+    )
     def test_read_ble_failure(self, mock_bt_available):
         """Test read fails when BLE read fails."""
         mock_bt_available.return_value = True
@@ -164,7 +172,9 @@ class TestRenogySensor:
         with pytest.raises(RuntimeError, match="Failed to read from Renogy device"):
             sensor.read()
 
-    @patch("pisolar.sensors.renogy.bluetooth_reader.BluetoothReader._bluetooth_available")
+    @patch(
+        "pisolar.sensors.renogy.bluetooth_reader.BluetoothReader._bluetooth_available"
+    )
     def test_read_empty_data(self, mock_bt_available):
         """Test read fails when device returns empty data."""
         mock_bt_available.return_value = True

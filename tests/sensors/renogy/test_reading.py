@@ -1,6 +1,6 @@
 """Tests for SolarReading."""
 
-from pisolar.sensors.renogy.reading import SolarReading
+from pisolar.sensors.renogy.solar_reading import SolarReading
 from tests.fixtures import RENOGY_RAW_DATA, RENOGY_RAW_DATA_CHARGING
 
 

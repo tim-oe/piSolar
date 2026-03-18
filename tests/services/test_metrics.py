@@ -3,9 +3,9 @@
 from unittest.mock import MagicMock, patch
 
 from pisolar.event_bus import EventBus
-from pisolar.sensors.renogy.reading import SolarReading
-from pisolar.sensors.temperature.reading import TemperatureReading
-from pisolar.services.metrics import SENSOR_READING_EVENT, MetricsService
+from pisolar.sensors.renogy.solar_reading import SolarReading
+from pisolar.sensors.temperature.temperature_reading import TemperatureReading
+from pisolar.services.metrics_service import SENSOR_READING_EVENT, MetricsService
 from tests.fixtures import RENOGY_RAW_DATA
 
 
@@ -19,7 +19,7 @@ class TestMetricsService:
 
     def test_record_publishes_events(self):
         """Test that record() publishes events for each reading."""
-        with patch("pisolar.services.metrics.get_event_bus") as mock_get_bus:
+        with patch("pisolar.services.metrics_service.get_event_bus") as mock_get_bus:
             mock_bus = MagicMock(spec=EventBus)
             mock_get_bus.return_value = mock_bus
 
@@ -46,7 +46,7 @@ class TestMetricsService:
 
     def test_record_solar_reading(self):
         """Test recording a solar reading."""
-        with patch("pisolar.services.metrics.get_event_bus") as mock_get_bus:
+        with patch("pisolar.services.metrics_service.get_event_bus") as mock_get_bus:
             mock_bus = MagicMock(spec=EventBus)
             mock_get_bus.return_value = mock_bus
 
@@ -64,7 +64,7 @@ class TestMetricsService:
 
     def test_record_empty_list(self):
         """Test recording empty list of readings."""
-        with patch("pisolar.services.metrics.get_event_bus") as mock_get_bus:
+        with patch("pisolar.services.metrics_service.get_event_bus") as mock_get_bus:
             mock_bus = MagicMock(spec=EventBus)
             mock_get_bus.return_value = mock_bus
 

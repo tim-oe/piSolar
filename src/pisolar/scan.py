@@ -1,8 +1,9 @@
-import minimalmodbus, serial
+import minimalmodbus
+import serial
 
 for addr in range(1, 248):
     try:
-        inst = minimalmodbus.Instrument('/dev/ttyUSB0', addr)
+        inst = minimalmodbus.Instrument("/dev/ttyUSB0", addr)
         inst.serial.baudrate = 9600
         inst.serial.bytesize = 8
         inst.serial.parity = serial.PARITY_NONE
