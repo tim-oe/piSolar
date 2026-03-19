@@ -8,14 +8,14 @@
 # Temperature sensor configuration (1-Wire sensors)
 # address: sensor_id without family prefix (e.g. 0000007c6850 for DS18B20)
 temperature:
-  enabled: !ENV ${PISOLAR_TEMPERATURE_ENABLED:false}
+  enabled: !ENV ${PISOLAR_TEMPERATURE_ENABLED:true}
   sensors:
     - name: "temp 1"
-      address: "0000007c6850"
+      address: "0000007b409e"
     - name: "temp 2"
       address: "000000b4c0d2"
     - name: "temp 3"
-      address: "0000007b409e"
+      address: "0000007c6850"
     - name: "temp 4"
       address: "0000007ba79d"
   schedule:
