@@ -32,7 +32,7 @@ renogy:
   sensors:
     - name: !ENV ${PISOLAR_RENOGY_NAME_2:rover-40}
       read_type: !ENV ${PISOLAR_RENOGY_READ_TYPE_2:serial} 
-      slave_address: !ENV ${PISOLAR_RENOGY_SLAVE_ADDR_2:16 # reover 40 defaulted to 16 the 20 to 1 the default
+      slave_address: !ENV ${PISOLAR_RENOGY_SLAVE_ADDR_2:16} # reover 40 defaulted to 16 the 20 to 1 the default
       device_path: !ENV ${PISOLAR_RENOGY_DEVICE_PATH_2:/dev/ttyUSB0}  # Serial port path
       scan_timeout: !ENV ${PISOLAR_RENOGY_SCAN_TIMEOUT_2:15.0}  # Timeout in seconds for BLE device scanning
       max_retries: !ENV ${PISOLAR_RENOGY_MAX_RETRIES_2:3}  # Number of retry attempts on failure
