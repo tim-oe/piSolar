@@ -22,6 +22,7 @@ from pisolar.sensors.temperature.temperature_reading import TemperatureReading
 from pisolar.sensors.temperature.temperature_sensor import TemperatureSensor
 from pisolar.services.logging_consumer import LoggingConsumer
 from pisolar.services.metrics_service import MetricsService
+from pisolar.services.sqlite_consumer import SqliteConsumer
 
 DEFAULT_CONFIG = "/etc/pisolar/config.yaml"
 DEFAULT_LOG_CONFIG = "/etc/pisolar/logging.yaml"
@@ -61,6 +62,14 @@ def run(ctx: click.Context) -> None:
     logger.info("Starting piSolar monitoring service")
 
     LoggingConsumer()
+
+    sqlite_consumer: SqliteConsumer | None = None
+    if settings.storage.enabled:
+        sqlite_consumer = SqliteConsumer(
+            db_path=settings.storage.db_path,
+            retention_days=settings.storage.retention_days,
+        )
+        logger.info("SQLite storage enabled: %s", settings.storage.db_path)
 
     metrics_service = MetricsService()
     scheduler = SchedulerService()
@@ -102,6 +111,22 @@ def run(ctx: click.Context) -> None:
         logger.info(
             "Renogy sensors enabled: %s",
             ", ".join(s.name for s in renogy_sensors),
+        )
+
+    if sqlite_consumer and settings.storage.prune_schedule.enabled:
+
+        def prune_readings() -> None:
+            sqlite_consumer.prune()
+
+        scheduler.add_job(
+            prune_readings,
+            settings.storage.prune_schedule.cron,
+            job_id="prune_readings",
+        )
+        logger.info(
+            "Prune job enabled: retention=%d days, schedule=%s",
+            settings.storage.retention_days,
+            settings.storage.prune_schedule.cron,
         )
 
     logger.info("Scheduler starting...")
@@ -230,3 +255,10 @@ def show_config(ctx: click.Context) -> None:
 
     click.echo("  Metrics:")
     click.echo(f"    output_dir: {settings.metrics.output_dir}")
+
+    click.echo("  Storage:")
+    click.echo(f"    enabled: {settings.storage.enabled}")
+    click.echo(f"    db_path: {settings.storage.db_path}")
+    click.echo(f"    retention_days: {settings.storage.retention_days}")
+    click.echo(f"    prune_schedule: {settings.storage.prune_schedule.cron}")
+    click.echo(f"    prune_enabled: {settings.storage.prune_schedule.enabled}")

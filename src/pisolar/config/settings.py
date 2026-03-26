@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from pisolar.config.metrics_config import MetricsConfig
 from pisolar.config.renogy_config import RenogyConfig
+from pisolar.config.storage_config import StorageConfig
 from pisolar.config.temperature_sensor_config import TemperatureSensorConfig
 
 
@@ -16,6 +17,7 @@ class Settings(BaseModel):
     )
     renogy: RenogyConfig = Field(default_factory=RenogyConfig)
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
+    storage: StorageConfig = Field(default_factory=StorageConfig)
 
     @classmethod  # type: ignore[misc]
     def from_yaml(cls, config_path: str) -> "Settings":
