@@ -37,6 +37,21 @@ renogy:
       scan_timeout: !ENV ${PISOLAR_RENOGY_SCAN_TIMEOUT_2:15.0}  # Timeout in seconds for BLE device scanning
       max_retries: !ENV ${PISOLAR_RENOGY_MAX_RETRIES_2:3}  # Number of retry attempts on failure
   
+# MQTT broker configuration
+mqtt:
+  enabled: !ENV ${PISOLAR_MQTT_ENABLED:false}
+  host: !ENV ${PISOLAR_MQTT_HOST:localhost}
+  port: !ENV ${PISOLAR_MQTT_PORT:1883}
+  client_id: !ENV ${PISOLAR_MQTT_CLIENT_ID:pisolar}
+  username: !ENV ${PISOLAR_MQTT_USERNAME:}
+  password: !ENV ${PISOLAR_MQTT_PASSWORD:}
+  keepalive: !ENV ${PISOLAR_MQTT_KEEPALIVE:60}
+  qos: !ENV ${PISOLAR_MQTT_QOS:1}
+  retain: !ENV ${PISOLAR_MQTT_RETAIN:false}
+  topics:
+    solar: !ENV ${PISOLAR_MQTT_TOPIC_SOLAR:pisolar/solar}
+    temperature: !ENV ${PISOLAR_MQTT_TOPIC_TEMPERATURE:pisolar/temperature}
+
 # Metrics output configuration
 metrics:
   output_dir: !ENV ${PISOLAR_METRICS_OUTPUT_DIR:/var/lib/pisolar/metrics}

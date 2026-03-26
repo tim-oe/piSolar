@@ -22,6 +22,7 @@ from pisolar.sensors.temperature.temperature_reading import TemperatureReading
 from pisolar.sensors.temperature.temperature_sensor import TemperatureSensor
 from pisolar.services.logging_consumer import LoggingConsumer
 from pisolar.services.metrics_service import MetricsService
+from pisolar.services.mqtt_consumer import MqttConsumer
 
 DEFAULT_CONFIG = "/etc/pisolar/config.yaml"
 DEFAULT_LOG_CONFIG = "/etc/pisolar/logging.yaml"
@@ -61,6 +62,11 @@ def run(ctx: click.Context) -> None:
     logger.info("Starting piSolar monitoring service")
 
     LoggingConsumer()
+
+    mqtt_consumer = None
+    if settings.mqtt.enabled:
+        mqtt_consumer = MqttConsumer(settings.mqtt)
+        logger.info("MQTT consumer enabled, broker %s:%d", settings.mqtt.host, settings.mqtt.port)
 
     metrics_service = MetricsService()
     scheduler = SchedulerService()
@@ -230,3 +236,16 @@ def show_config(ctx: click.Context) -> None:
 
     click.echo("  Metrics:")
     click.echo(f"    output_dir: {settings.metrics.output_dir}")
+
+    click.echo("  MQTT:")
+    click.echo(f"    enabled: {settings.mqtt.enabled}")
+    if settings.mqtt.enabled:
+        click.echo(f"    host: {settings.mqtt.host}")
+        click.echo(f"    port: {settings.mqtt.port}")
+        click.echo(f"    client_id: {settings.mqtt.client_id}")
+        click.echo(f"    username: {settings.mqtt.username}")
+        click.echo(f"    qos: {settings.mqtt.qos}")
+        click.echo(f"    retain: {settings.mqtt.retain}")
+        click.echo(f"    topics:")
+        click.echo(f"      solar: {settings.mqtt.topics.solar}")
+        click.echo(f"      temperature: {settings.mqtt.topics.temperature}")
