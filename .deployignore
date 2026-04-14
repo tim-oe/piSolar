@@ -1,0 +1,65 @@
+# Files and directories to exclude from release builds
+# Used by poetry run build-release to create deployment packages
+
+# Development tools
+.git/
+.github/
+.vscode/
+.cursor/
+poetry.lock
+poetry.toml
+pyrightconfig.json
+.flake8
+
+# Development and test files
+tests/
+scripts/
+docs/
+
+# Python development
+
+# Python development
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+.coverage.*
+reports/
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+
+# Virtual environments (don't deploy local venvs)
+.venv/
+venv/
+env/
+ENV/
+
+# IDE files
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.tar.gz
+*.zip
+
+# Environment files (should be configured on target)
+.env
+.envrc
+
+# Documentation (not needed at runtime)
+docs/
+README.md
+RELEASE.md
+
+# Development dependencies metadata
+pyproject.toml.bak
+poetry.lock.bak

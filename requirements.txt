@@ -1,0 +1,13 @@
+# Production dependencies for piSolar
+# Generated from pyproject.toml [project.dependencies]
+# Use: pip install -r requirements.txt
+
+w1thermsensor>=2.3.0,<3.0.0
+pyaml-env>=1.2.0,<2.0.0
+apscheduler>=3.10.0,<4.0.0
+click>=8.1.0,<9.0.0
+pydantic>=2.9.0,<3.0.0
+renogy-ble>=1.2.0,<2.0.0
+pymodbus>=3.6.0,<4.0.0
+pyserial>=3.5,<4.0.0
+py-singleton>=1.0.0,<2.0.0
