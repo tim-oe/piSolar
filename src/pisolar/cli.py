@@ -22,6 +22,7 @@ from pisolar.sensors.temperature.temperature_reading import TemperatureReading
 from pisolar.sensors.temperature.temperature_sensor import TemperatureSensor
 from pisolar.services.logging_consumer import LoggingConsumer
 from pisolar.services.metrics_service import MetricsService
+from pisolar.services.rabbitmq_consumer import RabbitMQConsumer
 from pisolar.services.sqlite_consumer import SqliteConsumer
 
 DEFAULT_CONFIG = "/etc/pisolar/config.yaml"
@@ -70,6 +71,13 @@ def run(ctx: click.Context) -> None:
             retention_days=settings.storage.retention_days,
         )
         logger.info("SQLite storage enabled: %s", settings.storage.db_path)
+
+    if settings.rabbitmq.enabled:
+        RabbitMQConsumer(settings.rabbitmq)
+        logger.info(
+            "RabbitMQ publishing enabled: exchange=%s",
+            settings.rabbitmq.exchange,
+        )
 
     metrics_service = MetricsService()
     scheduler = SchedulerService()
