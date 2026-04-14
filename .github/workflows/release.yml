@@ -1,0 +1,90 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0, v1.2.3, etc.
+
+permissions:
+  contents: write  # Required for creating releases
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Get version from pyproject.toml
+        id: get_version
+        run: |
+          # Extract version from pyproject.toml and tag
+          VERSION=$(grep -m1 '^version = ' pyproject.toml | cut -d'"' -f2)
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          echo "pyproject_version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
+          echo "Building version from pyproject.toml: $VERSION"
+          echo "Git tag version: $TAG_VERSION"
+          
+          # Warn if they don't match
+          if [ "$VERSION" != "$TAG_VERSION" ]; then
+            echo "::warning::Version mismatch: pyproject.toml ($VERSION) != git tag ($TAG_VERSION)"
+          fi
+      
+      - name: Build release package
+        run: |
+          pip install poetry
+          poetry install --only main
+          poetry run build-release
+      
+      - name: Get version for artifact
+        id: get_version
+        run: |
+          VERSION=$(grep -m1 '^version = ' pyproject.toml | cut -d'"' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/release/pisolar-${{ steps.get_version.outputs.pyproject_version }}.tar.gz
+          body: |
+            ## piSolar Release v${{ steps.get_version.outputs.pyproject_version }}
+            
+            ### Installation
+            
+            On your Raspberry Pi:
+            ```bash
+            # Download release
+            wget https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.tag_version }}/pisolar-${{ steps.get_version.outputs.pyproject_version }}.tar.gz
+            
+            # Extract
+            tar -xzf pisolar-${{ steps.get_version.outputs.pyproject_version }}.tar.gz
+            cd pisolar
+            
+            # Install
+            sudo ./install.sh
+            
+            # Configure
+            sudo nano /etc/pisolar/config.yaml
+            
+            # Enable and start
+            sudo systemctl enable pisolar
+            sudo systemctl start pisolar
+            ```
+            
+            ### What's Included
+            - Runtime application code
+            - Configuration files
+            - Systemd service definition
+            - Installation script
+            
+            ### Requirements
+            - Raspberry Pi (3, 4, 5, or Zero)
+            - Python 3.11 or higher
+            - Renogy charge controller (for solar monitoring)
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

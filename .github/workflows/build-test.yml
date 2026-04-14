@@ -1,0 +1,72 @@
+name: Build Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Test release build
+        run: |
+          pip install poetry
+          poetry install --only main
+          poetry run build-release
+      
+      - name: Verify package structure
+        run: |
+          # Get version from pyproject.toml
+          VERSION=$(grep -m1 '^version = ' pyproject.toml | cut -d'"' -f2)
+          ARCHIVE="build/release/pisolar-${VERSION}.tar.gz"
+          
+          echo "Checking archive structure..."
+          tar -tzf "$ARCHIVE" | head -20
+          
+          echo ""
+          echo "Verifying required files..."
+          tar -tzf "$ARCHIVE" | grep -q "pisolar/install.sh" && echo "✓ install.sh found"
+          tar -tzf "$ARCHIVE" | grep -q "pisolar/requirements.txt" && echo "✓ requirements.txt found"
+          tar -tzf "$ARCHIVE" | grep -q "pisolar/config/config.yaml" && echo "✓ config.yaml found"
+          tar -tzf "$ARCHIVE" | grep -q "pisolar/systemd/pisolar.service" && echo "✓ systemd service found"
+      
+      - name: Check archive size
+        run: |
+          # Get version from pyproject.toml
+          VERSION=$(grep -m1 '^version = ' pyproject.toml | cut -d'"' -f2)
+          ARCHIVE="build/release/pisolar-${VERSION}.tar.gz"
+          
+          SIZE=$(du -h "$ARCHIVE" | cut -f1)
+          echo "Package size: $SIZE"
+          
+          # Fail if package is unexpectedly large (> 1MB suggests dev files included)
+          SIZE_BYTES=$(stat -c%s "$ARCHIVE")
+          if [ $SIZE_BYTES -gt 1048576 ]; then
+            echo "Error: Package is too large ($SIZE). May include dev files."
+            exit 1
+          fi
+          echo "✓ Package size is reasonable"
+      
+      - name: Upload build artifact
+        run: |
+          VERSION=$(grep -m1 '^version = ' pyproject.toml | cut -d'"' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+        id: get_version
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pisolar-${{ steps.get_version.outputs.version }}-build
+          path: build/release/pisolar-${{ steps.get_version.outputs.version }}.tar.gz
+          retention-days: 7
