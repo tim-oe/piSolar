@@ -8,13 +8,13 @@ DDL (MySQL):
         read_time        DATETIME(6)      NOT NULL,
         value            FLOAT            NOT NULL,
 
-        PRIMARY KEY (id, read_time),
-        INDEX idx_solar_temp_read_time  (read_time),
-        INDEX idx_solar_temp_sensor_id  (sensor_id)
+        PRIMARY KEY (id),
+        INDEX idx_solar_temp_read_time (read_time),
+        INDEX idx_solar_temp_sensor_id (sensor_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
     -- No FK constraint: partitioned tables do not support foreign keys in MariaDB/MySQL.
-    -- sensor_id logically references solar_temperature_sensor(id) but is not enforced by the DB.
+    -- sensor_id is the integer id from config (1-4), stored as a plain value.
 """
 
 from __future__ import annotations
@@ -53,8 +53,7 @@ class TemperatureRecord(Base):
 
         Args:
             reading: The temperature reading to persist.
-            sensor_id: Sensor identifier from config; logically references
-                ``solar_temperature_sensor(id)`` but not DB-enforced (partitioned table).
+            sensor_id: Integer id from config (e.g. 1–4), stored directly as sensor_id.
 
         The ``read_time`` timezone info is stripped before storage because
         MySQL ``DATETIME`` columns are not timezone-aware.
