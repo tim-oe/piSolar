@@ -10,15 +10,11 @@ Type=simple
 User=tcronin
 Group=tcronin
 
-# Configuration file locations
-Environment=PISOLAR_CONFIG=/etc/pisolar/config.yaml
-Environment=PISOLAR_LOGGING_CONFIG=/etc/pisolar/logging.yaml
-
 # Working directory
 WorkingDirectory=/opt/pisolar
 
 # Start command
-ExecStart=/opt/pisolar/.venv/bin/pisolar run
+ExecStart=/opt/pisolar/.venv/bin/pisolar -c /etc/pisolar/config.yaml -l /etc/pisolar/logging.yaml run
 
 # Restart policy
 Restart=on-failure
