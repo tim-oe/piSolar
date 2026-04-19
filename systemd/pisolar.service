@@ -8,6 +8,9 @@ Conflicts=getty@tty1.service
 [Service]
 Type=simple
 
+# load standard file...
+EnvironmentFile=/etc/environment
+
 #env settings
 Environment=PISOLAR_LOG_FILE=/var/log/piSolar.log
 
