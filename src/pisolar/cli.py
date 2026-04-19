@@ -193,9 +193,32 @@ def check(ctx: click.Context) -> None:
 def read_once(ctx: click.Context) -> None:
     """Read all sensors once and output to console."""
     settings: Settings = ctx.obj["settings"]
+    logger = get_logger("cli")
 
     click.echo("Reading sensors...")
 
+    LoggingConsumer()
+
+    mysql_consumer: MySQLConsumer | None = None
+    if settings.mysql.enabled:
+        mysql_consumer = MySQLConsumer(settings.mysql)
+        logger.info("MySQL storage enabled: %s", settings.mysql.url)
+
+    if settings.storage.enabled:
+        SqliteConsumer(
+            db_path=settings.storage.db_path,
+            retention_days=settings.storage.retention_days,
+        )
+        logger.info("SQLite storage enabled: %s", settings.storage.db_path)
+
+    if settings.rabbitmq.enabled:
+        RabbitMQConsumer(settings.rabbitmq)
+        logger.info(
+            "RabbitMQ publishing enabled: exchange=%s",
+            settings.rabbitmq.exchange,
+        )
+
+    metrics_service = MetricsService()
     all_readings = []
 
     if settings.temperature.enabled:
@@ -205,6 +228,7 @@ def read_once(ctx: click.Context) -> None:
         temp_sensor = TemperatureSensor(sensor_configs)
         readings = temp_sensor.read()
         all_readings.extend(readings)
+        metrics_service.record(readings)
         for reading in readings:
             # Temperature sensors always return TemperatureReading
             temp_reading = reading  # type: TemperatureReading
@@ -219,6 +243,7 @@ def read_once(ctx: click.Context) -> None:
             try:
                 readings = sensor.read()
                 all_readings.extend(readings)
+                metrics_service.record(readings)
                 for reading in readings:
                     click.echo(f"  [solar/{conn_type}] {reading.name}:")
                     # Display all available data from to_dict()
@@ -234,9 +259,14 @@ def read_once(ctx: click.Context) -> None:
 
     if not all_readings:
         click.echo("  No readings available")
+        if mysql_consumer:
+            mysql_consumer.close()
         sys.exit(1)
 
     click.echo(f"\nTotal: {len(all_readings)} readings")
+
+    if mysql_consumer:
+        mysql_consumer.close()
 
 
 @main.command()
