@@ -20,6 +20,7 @@ from pisolar.scheduler_service import SchedulerService
 from pisolar.sensors.renogy.renogy_sensor import RenogySensor
 from pisolar.sensors.temperature.temperature_reading import TemperatureReading
 from pisolar.sensors.temperature.temperature_sensor import TemperatureSensor
+from pisolar.services.db.mysql_consumer import MySQLConsumer
 from pisolar.services.logging_consumer import LoggingConsumer
 from pisolar.services.metrics_service import MetricsService
 from pisolar.services.rabbitmq_consumer import RabbitMQConsumer
@@ -79,12 +80,17 @@ def run(ctx: click.Context) -> None:
             settings.rabbitmq.exchange,
         )
 
+    mysql_consumer: MySQLConsumer | None = None
+    if settings.mysql.enabled:
+        mysql_consumer = MySQLConsumer(settings.mysql)
+        logger.info("MySQL storage enabled: %s", settings.mysql.url)
+
     metrics_service = MetricsService()
     scheduler = SchedulerService()
 
     if settings.temperature.enabled:
         sensor_configs = [
-            {"name": s.name, "address": s.address} for s in settings.temperature.sensors
+            {"id": s.id, "address": s.address} for s in settings.temperature.sensors
         ]
         temp_sensor = TemperatureSensor(sensor_configs)
 
@@ -138,7 +144,11 @@ def run(ctx: click.Context) -> None:
         )
 
     logger.info("Scheduler starting...")
-    scheduler.start()
+    try:
+        scheduler.start()
+    finally:
+        if mysql_consumer:
+            mysql_consumer.close()
 
 
 @main.command()
@@ -151,7 +161,7 @@ def check(ctx: click.Context) -> None:
 
     if settings.temperature.enabled and settings.temperature.sensors:
         sensor_configs = [
-            {"name": s.name, "address": s.address} for s in settings.temperature.sensors
+            {"id": s.id, "address": s.address} for s in settings.temperature.sensors
         ]
         temp_sensor = TemperatureSensor(sensor_configs)
         try:
@@ -190,7 +200,7 @@ def read_once(ctx: click.Context) -> None:
 
     if settings.temperature.enabled:
         sensor_configs = [
-            {"name": s.name, "address": s.address} for s in settings.temperature.sensors
+            {"id": s.id, "address": s.address} for s in settings.temperature.sensors
         ]
         temp_sensor = TemperatureSensor(sensor_configs)
         readings = temp_sensor.read()

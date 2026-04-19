@@ -20,12 +20,12 @@ class TemperatureSensor(BaseSensor):
 
     _logger = get_logger("sensors.temperature")
 
-    def __init__(self, sensors: list[dict[str, str]]) -> None:
+    def __init__(self, sensors: list[dict]) -> None:
         """
         Initialize temperature sensor with configured sensors.
 
         Args:
-            sensors: List of sensor configs with 'name' and 'address' keys
+            sensors: List of sensor configs with 'id' and 'address' keys
                      (address = sensor_id without family prefix, e.g. 0000007c6850)
         """
         self._sensors = sensors
@@ -45,7 +45,7 @@ class TemperatureSensor(BaseSensor):
         }
 
         for sensor_config in self._sensors:
-            name = sensor_config["name"]
+            sensor_id = sensor_config["id"]
             address = sensor_config["address"]
 
             sensor = available.get(address)
@@ -56,7 +56,7 @@ class TemperatureSensor(BaseSensor):
                     )
                 except Exception as e:
                     self._logger.warning(
-                        "Sensor %s (%s) not found: %s", name, address, e
+                        "Sensor %s (%s) not found: %s", sensor_id, address, e
                     )
                     continue
 
@@ -67,21 +67,21 @@ class TemperatureSensor(BaseSensor):
                 self._logger.warning(
                     "Sensor %s (%s) returned reset value (85°C). "
                     "Check power supply and wiring.",
-                    name,
+                    sensor_id,
                     address,
                 )
                 continue
             except SensorNotReadyError:
                 self._logger.warning(
                     "Sensor %s (%s) not ready. Skipping this read.",
-                    name,
+                    sensor_id,
                     address,
                 )
                 continue
             except W1ThermSensorError as e:
                 self._logger.warning(
                     "Sensor %s (%s) read error: %s",
-                    name,
+                    sensor_id,
                     address,
                     e,
                 )
@@ -90,15 +90,16 @@ class TemperatureSensor(BaseSensor):
 
             reading = TemperatureReading(
                 type=self.sensor_type,
-                name=name,
+                name=address,
+                sensor_id=sensor_id,
                 value=temp_celsius,
                 unit="celsius",
                 read_duration_ms=round(sensor_elapsed_ms, 1),
             )
             readings.append(reading)
             self._logger.debug(
-                "Temperature: %s (%s) = %.2fC in %.1fms",
-                name,
+                "Temperature: sensor_id=%s (%s) = %.2fC in %.1fms",
+                sensor_id,
                 address,
                 temp_celsius,
                 sensor_elapsed_ms,

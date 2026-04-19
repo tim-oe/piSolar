@@ -4,6 +4,7 @@ from pyaml_env import parse_config
 from pydantic import BaseModel, Field
 
 from pisolar.config.metrics_config import MetricsConfig
+from pisolar.config.mysql_config import MySQLConfig
 from pisolar.config.rabbitmq_config import RabbitMQConfig
 from pisolar.config.renogy_config import RenogyConfig
 from pisolar.config.storage_config import StorageConfig
@@ -20,6 +21,7 @@ class Settings(BaseModel):
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
     storage: StorageConfig = Field(default_factory=StorageConfig)
     rabbitmq: RabbitMQConfig = Field(default_factory=RabbitMQConfig)
+    mysql: MySQLConfig = Field(default_factory=MySQLConfig)
 
     @classmethod  # type: ignore[misc]
     def from_yaml(cls, config_path: str) -> "Settings":

@@ -8,6 +8,7 @@ from pisolar.sensors.sensor_reading import SensorReading
 class TemperatureReading(SensorReading):
     """Temperature sensor reading with value and unit."""
 
+    sensor_id: int  # FK → temperature_sensor.id, sourced from config
     value: float
     unit: str = "C"  # Celsius by default
 

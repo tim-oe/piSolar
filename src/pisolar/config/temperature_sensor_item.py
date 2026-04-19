@@ -6,5 +6,5 @@ from pydantic import BaseModel, Field
 class TemperatureSensorItem(BaseModel):
     """Configuration for a single temperature sensor."""
 
-    name: str = Field(description="Friendly name for the sensor")
+    id: int = Field(ge=1, le=255, description="Sensor ID — stored as sensor_id in temperature_reading")
     address: str = Field(description="1-Wire address of the sensor")

@@ -10,13 +10,13 @@
 temperature:
   enabled: !ENV ${PISOLAR_TEMPERATURE_ENABLED:true}
   sensors:
-    - name: "temp 1"
+    - id: "1"
       address: "0000007b409e"
-    - name: "temp 2"
+    - id: "2"
       address: "000000b4c0d2"
-    - name: "temp 3"
+    - id: "3"
       address: "0000007c6850"
-    - name: "temp 4"
+    - id: "4"
       address: "0000007ba79d"
   schedule:
     # Cron expression: minute hour day month day_of_week
@@ -58,3 +58,10 @@ rabbitmq:
   exchange_type: !ENV ${PISOLAR_RABBITMQ_EXCHANGE_TYPE:topic}
   routing_key: !ENV ${PISOLAR_RABBITMQ_ROUTING_KEY:sensor.reading}
   durable: !ENV ${PISOLAR_RABBITMQ_DURABLE:true}
+
+# MySQL storage for persisting solar and temperature readings (SQLAlchemy)
+mysql:
+  enabled: !ENV ${PISOLAR_MYSQL_ENABLED:true}
+  url: !ENV ${PISOLAR_MYSQL_URL:mysql+pymysql://pisolar:pisolar@localhost/pisolar}
+  pool_size: !ENV ${PISOLAR_MYSQL_POOL_SIZE:5}
+  pool_recycle: !ENV ${PISOLAR_MYSQL_POOL_RECYCLE:3600}
