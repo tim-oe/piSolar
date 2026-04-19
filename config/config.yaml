@@ -62,6 +62,6 @@ rabbitmq:
 # MySQL storage for persisting solar and temperature readings (SQLAlchemy)
 mysql:
   enabled: !ENV ${PISOLAR_MYSQL_ENABLED:true}
-  url: !ENV ${PISOLAR_MYSQL_URL:mysql+pymysql://pisolar:pisolar@localhost/pisolar}
+  url: !ENV ${PISOLAR_MYSQL_URL:mariadb+mysqlconnector://pisolar:pisolar@localhost:3306/pisolar}
   pool_size: !ENV ${PISOLAR_MYSQL_POOL_SIZE:5}
   pool_recycle: !ENV ${PISOLAR_MYSQL_POOL_RECYCLE:3600}

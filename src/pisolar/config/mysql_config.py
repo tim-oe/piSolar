@@ -8,8 +8,8 @@ class MySQLConfig(BaseModel):
 
     enabled: bool = Field(default=False, description="Enable MySQL persistence")
     url: str = Field(
-        default="mysql+pymysql://pisolar:pisolar@localhost/pisolar",
-        description="SQLAlchemy database URL (mysql+pymysql://user:pass@host/db)",
+        default="mariadb+mysqlconnector://pisolar:pisolar@localhost:3306/pisolar",
+        description="SQLAlchemy database URL (mariadb+mysqlconnector://user:pass@host:port/db)",
     )
     pool_size: int = Field(
         default=5,
