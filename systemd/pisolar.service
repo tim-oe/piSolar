@@ -6,8 +6,9 @@ Wants=bluetooth.target
 
 [Service]
 Type=simple
-User=pisolar
-Group=pisolar
+# todo work with system user
+User=tcronin
+Group=tcronin
 
 # Configuration file locations
 Environment=PISOLAR_CONFIG=/etc/pisolar/config.yaml
