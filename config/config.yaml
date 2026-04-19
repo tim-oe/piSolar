@@ -39,12 +39,12 @@ renogy:
 
 # Metrics output configuration
 metrics:
-  output_dir: !ENV ${PISOLAR_METRICS_OUTPUT_DIR:/var/lib/pisolar/metrics}
+  output_dir: !ENV ${PISOLAR_METRICS_OUTPUT_DIR:/var/lib/piSolar/metrics}
 
 # SQLite storage for persisting sensor readings as JSON
 storage:
   enabled: !ENV ${PISOLAR_STORAGE_ENABLED:true}
-  db_path: !ENV ${PISOLAR_STORAGE_DB_PATH:/var/lib/pisolar/readings.db}
+  db_path: !ENV ${PISOLAR_STORAGE_DB_PATH:/var/lib/piSolar/readings.db}
   retention_days: !ENV ${PISOLAR_STORAGE_RETENTION_DAYS:30}
   prune_schedule:
     cron: !ENV ${PISOLAR_STORAGE_PRUNE_CRON:0 3 * * *}  # Daily at 3 AM

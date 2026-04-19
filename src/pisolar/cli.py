@@ -26,8 +26,8 @@ from pisolar.services.metrics_service import MetricsService
 from pisolar.services.rabbitmq_consumer import RabbitMQConsumer
 from pisolar.services.sqlite_consumer import SqliteConsumer
 
-DEFAULT_CONFIG = "/etc/pisolar/config.yaml"
-DEFAULT_LOG_CONFIG = "/etc/pisolar/logging.yaml"
+DEFAULT_CONFIG = "/etc/piSolar/config.yaml"
+DEFAULT_LOG_CONFIG = "/etc/piSolar/logging.yaml"
 
 
 @click.group()
