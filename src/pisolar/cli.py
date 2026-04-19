@@ -83,7 +83,7 @@ def run(ctx: click.Context) -> None:
     mysql_consumer: MySQLConsumer | None = None
     if settings.mysql.enabled:
         mysql_consumer = MySQLConsumer(settings.mysql)
-        logger.info("MySQL storage enabled: %s", settings.mysql.url)
+        logger.info("MySQL storage enabled: %s", settings.mysql.masked_url)
 
     metrics_service = MetricsService()
     scheduler = SchedulerService()
@@ -202,7 +202,7 @@ def read_once(ctx: click.Context) -> None:
     mysql_consumer: MySQLConsumer | None = None
     if settings.mysql.enabled:
         mysql_consumer = MySQLConsumer(settings.mysql)
-        logger.info("MySQL storage enabled: %s", settings.mysql.url)
+        logger.info("MySQL storage enabled: %s", settings.mysql.masked_url)
 
     if settings.storage.enabled:
         SqliteConsumer(

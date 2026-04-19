@@ -42,7 +42,7 @@ class MySQLConsumer:
 
         self._event_bus = get_event_bus()
         self._event_bus.subscribe(SENSOR_READING_EVENT, self._handle_reading)
-        self._logger.info("MySQL consumer initialized: url=%s", config.url)
+        self._logger.info("MySQL consumer initialized: url=%s", config.masked_url)
 
     # ------------------------------------------------------------------
     # Event handling
