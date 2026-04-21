@@ -90,7 +90,8 @@ def run(ctx: click.Context) -> None:
 
     if settings.temperature.enabled:
         sensor_configs = [
-            {"id": s.id, "address": s.address} for s in settings.temperature.sensors
+            {"id": s.id, "address": s.address, "name": s.name}
+            for s in settings.temperature.sensors
         ]
         temp_sensor = TemperatureSensor(sensor_configs)
 
@@ -161,7 +162,8 @@ def check(ctx: click.Context) -> None:
 
     if settings.temperature.enabled and settings.temperature.sensors:
         sensor_configs = [
-            {"id": s.id, "address": s.address} for s in settings.temperature.sensors
+            {"id": s.id, "address": s.address, "name": s.name}
+            for s in settings.temperature.sensors
         ]
         temp_sensor = TemperatureSensor(sensor_configs)
         try:
@@ -223,17 +225,18 @@ def read_once(ctx: click.Context) -> None:
 
     if settings.temperature.enabled:
         sensor_configs = [
-            {"id": s.id, "address": s.address} for s in settings.temperature.sensors
+            {"id": s.id, "address": s.address, "name": s.name}
+            for s in settings.temperature.sensors
         ]
         temp_sensor = TemperatureSensor(sensor_configs)
         readings = temp_sensor.read()
         all_readings.extend(readings)
         metrics_service.record(readings)
         for reading in readings:
-            # Temperature sensors always return TemperatureReading
-            temp_reading = reading  # type: TemperatureReading
+            temp_reading: TemperatureReading = reading
             click.echo(
-                f"  [temp] {temp_reading.name}: {temp_reading.value:.2f} {temp_reading.unit}"
+                f"  [temp] {temp_reading.name}: "
+                f"{temp_reading.value:.2f} {temp_reading.unit}"
             )
 
     if settings.renogy.enabled and settings.renogy.sensors:
@@ -280,7 +283,7 @@ def show_config(ctx: click.Context) -> None:
     click.echo(f"    enabled: {settings.temperature.enabled}")
     click.echo(f"    sensors: {len(settings.temperature.sensors)}")
     for sensor in settings.temperature.sensors:
-        click.echo(f"      - {sensor.name}: {sensor.address}")
+        click.echo(f"      - {sensor.name or sensor.id}: {sensor.address}")
     click.echo(f"    schedule: {settings.temperature.schedule.cron}")
 
     click.echo("  Renogy sensors:")

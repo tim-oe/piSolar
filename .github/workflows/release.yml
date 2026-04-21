@@ -38,12 +38,6 @@ jobs:
           poetry install --only main
           poetry run build-release
       
-      - name: Get version for artifact
-        id: get_version
-        run: |
-          VERSION=$(grep -m1 '^version = ' pyproject.toml | cut -d'"' -f2)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-      
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:

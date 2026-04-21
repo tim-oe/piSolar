@@ -93,10 +93,10 @@ RENOGY_CONFIG = RENOGY_BT_CONFIG
 
 # Temperature sensor addresses (DS18B20 1-Wire sensors)
 TEMPERATURE_SENSORS = [
-    {"name": "temp 1", "address": "0000007c6850"},
-    {"name": "temp 2", "address": "000000b4c0d2"},
-    {"name": "temp 3", "address": "0000007b409e"},
-    {"name": "temp 4", "address": "0000007ba79d"},
+    {"id": 1, "name": "temp 1", "address": "0000007c6850"},
+    {"id": 2, "name": "temp 2", "address": "000000b4c0d2"},
+    {"id": 3, "name": "temp 3", "address": "0000007b409e"},
+    {"id": 4, "name": "temp 4", "address": "0000007ba79d"},
 ]
 
 # Simulated temperature readings (Celsius)

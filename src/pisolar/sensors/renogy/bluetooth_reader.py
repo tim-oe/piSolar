@@ -65,7 +65,7 @@ class BluetoothReader(RenogyReader):
 
     @staticmethod
     def _bluetooth_available() -> bool:
-        """Return True if a Bluetooth adapter is present (Linux sysfs), or on non-Linux."""
+        """Return True if a BT adapter is present (Linux sysfs) or on non-Linux."""
         bt = Path("/sys/class/bluetooth")
         if not bt.exists():
             return True  # non-Linux or no sysfs; let the library handle it

@@ -21,7 +21,8 @@ class MySQLConsumer:
     event bus topic and writes one row per reading to the appropriate table:
 
     - :class:`~pisolar.sensors.renogy.solar_reading.SolarReading` → ``solar_reading``
-    - :class:`~pisolar.sensors.temperature.temperature_reading.TemperatureReading` → ``temperature_reading``
+    - :class:`~pisolar.sensors.temperature.temperature_reading.TemperatureReading`
+      → ``temperature_reading``
 
     Schema management is handled externally (pyway).  This class does **not**
     call ``create_all()``; the tables must already exist before the service starts.
@@ -54,7 +55,9 @@ class MySQLConsumer:
                 if isinstance(reading, SolarReading):
                     session.add(SolarRecord.from_reading(reading))
                 elif isinstance(reading, TemperatureReading):
-                    session.add(TemperatureRecord.from_reading(reading, reading.sensor_id))
+                    session.add(
+                        TemperatureRecord.from_reading(reading, reading.sensor_id)
+                    )
                 else:
                     self._logger.warning(
                         "Unhandled reading type %s for %s/%s — skipping",

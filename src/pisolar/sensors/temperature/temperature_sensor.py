@@ -47,6 +47,7 @@ class TemperatureSensor(BaseSensor):
         for sensor_config in self._sensors:
             sensor_id = sensor_config["id"]
             address = sensor_config["address"]
+            label = sensor_config.get("name") or address
 
             sensor = available.get(address)
             if sensor is None:
@@ -90,7 +91,7 @@ class TemperatureSensor(BaseSensor):
 
             reading = TemperatureReading(
                 type=self.sensor_type,
-                name=address,
+                name=label,
                 sensor_id=sensor_id,
                 value=temp_celsius,
                 unit="celsius",
@@ -100,7 +101,7 @@ class TemperatureSensor(BaseSensor):
             self._logger.debug(
                 "Temperature: sensor_id=%s (%s) = %.2fC in %.1fms",
                 sensor_id,
-                address,
+                label,
                 temp_celsius,
                 sensor_elapsed_ms,
             )

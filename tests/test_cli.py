@@ -23,7 +23,8 @@ def config_files(tmp_path):
 temperature:
   enabled: true
   sensors:
-    - name: test_sensor
+    - id: 1
+      name: test_sensor
       address: "0000007c6850"
   schedule:
     cron: "*/5 * * * *"

@@ -13,8 +13,9 @@ DDL (MySQL):
         INDEX idx_solar_temp_sensor_id (sensor_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-    -- No FK constraint: partitioned tables do not support foreign keys in MariaDB/MySQL.
-    -- sensor_id is the integer id from config (1-4), stored as a plain value.
+    -- No FK constraint: partitioned tables do not support foreign keys in
+    -- MariaDB/MySQL. sensor_id is the integer id from config (1-4),
+    -- stored as a plain value.
 """
 
 from __future__ import annotations
@@ -32,23 +33,30 @@ if TYPE_CHECKING:
 
 
 class TemperatureRecord(Base):
-    """Persisted row for a single :class:`~pisolar.sensors.temperature.temperature_reading.TemperatureReading`."""
+    """Persisted row for a single
+    :class:`~pisolar.sensors.temperature.temperature_reading.TemperatureReading`."""
 
     __tablename__ = "solar_temperature_reading"
 
-    id: Mapped[int] = mapped_column(INTEGER(unsigned=True), primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        INTEGER(unsigned=True), primary_key=True, autoincrement=True
+    )
     sensor_id: Mapped[int] = mapped_column(
         TINYINT(unsigned=True),
         nullable=False,
         index=True,
     )
-    read_time: Mapped[datetime] = mapped_column(DATETIME(fsp=6), nullable=False, index=True)
+    read_time: Mapped[datetime] = mapped_column(
+        DATETIME(fsp=6), nullable=False, index=True
+    )
 
     # Temperature value — signed (outdoor temps can be below 0°C)
     value: Mapped[float] = mapped_column(FLOAT, nullable=False)
 
     @classmethod
-    def from_reading(cls, reading: TemperatureReading, sensor_id: int) -> TemperatureRecord:
+    def from_reading(
+        cls, reading: TemperatureReading, sensor_id: int
+    ) -> TemperatureRecord:
         """Build a :class:`TemperatureRecord` from a reading.
 
         Args:

@@ -28,7 +28,9 @@ class TestTemperatureRecord:
         assert TemperatureRecord.__tablename__ == "solar_temperature_reading"
 
     def test_from_reading_maps_value(self, session, sensor_id):
-        reading = TemperatureReading(type="temperature", name="0000007b409e", sensor_id=sensor_id, value=22.5)
+        reading = TemperatureReading(
+            type="temperature", name="0000007b409e", sensor_id=sensor_id, value=22.5
+        )
         session.add(TemperatureRecord.from_reading(reading, sensor_id))
         session.commit()
 
@@ -36,7 +38,9 @@ class TestTemperatureRecord:
         assert row.value == pytest.approx(22.5)
 
     def test_from_reading_maps_sensor_id(self, session, sensor_id):
-        reading = TemperatureReading(type="temperature", name="0000007b409e", sensor_id=sensor_id, value=22.5)
+        reading = TemperatureReading(
+            type="temperature", name="0000007b409e", sensor_id=sensor_id, value=22.5
+        )
         session.add(TemperatureRecord.from_reading(reading, sensor_id))
         session.commit()
 
@@ -44,12 +48,16 @@ class TestTemperatureRecord:
         assert row.sensor_id == sensor_id
 
     def test_from_reading_strips_timezone(self, sensor_id):
-        reading = TemperatureReading(type="temperature", name="0000007b409e", sensor_id=sensor_id, value=22.5)
+        reading = TemperatureReading(
+            type="temperature", name="0000007b409e", sensor_id=sensor_id, value=22.5
+        )
         record = TemperatureRecord.from_reading(reading, sensor_id)
         assert record.read_time.tzinfo is None
 
     def test_from_reading_negative_temperature(self, session, sensor_id):
-        reading = TemperatureReading(type="temperature", name="0000007b409e", sensor_id=sensor_id, value=-5.2)
+        reading = TemperatureReading(
+            type="temperature", name="0000007b409e", sensor_id=sensor_id, value=-5.2
+        )
         session.add(TemperatureRecord.from_reading(reading, sensor_id))
         session.commit()
 
@@ -57,7 +65,9 @@ class TestTemperatureRecord:
         assert row.value == pytest.approx(-5.2)
 
     def test_from_reading_preserves_read_time(self, session, sensor_id):
-        reading = TemperatureReading(type="temperature", name="0000007b409e", sensor_id=sensor_id, value=22.5)
+        reading = TemperatureReading(
+            type="temperature", name="0000007b409e", sensor_id=sensor_id, value=22.5
+        )
         record = TemperatureRecord.from_reading(reading, sensor_id)
         expected = reading.read_time.replace(tzinfo=None)
 

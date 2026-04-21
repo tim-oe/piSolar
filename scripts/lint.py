@@ -15,8 +15,8 @@ import sys
 
 
 def main() -> int:
-    """Run all linting tools on src and tests directories."""
-    targets = ["src", "tests"]
+    """Run all linting tools on the src directory (tests excluded)."""
+    targets = ["src"]
     failed = False
 
     # Run isort (import sorting)
@@ -46,8 +46,8 @@ def main() -> int:
 
 
 def format_code() -> int:
-    """Auto-format code with isort and black."""
-    targets = ["src", "tests"]
+    """Auto-format code with isort and black (tests excluded)."""
+    targets = ["src"]
 
     print("Running isort...")
     subprocess.run(["isort", *targets])

@@ -11,7 +11,10 @@ class MySQLConfig(BaseModel):
     enabled: bool = Field(default=False, description="Enable MySQL persistence")
     url: str = Field(
         default="mariadb+mysqlconnector://pisolar:pisolar@localhost:3306/pisolar",
-        description="SQLAlchemy database URL (mariadb+mysqlconnector://user:pass@host:port/db)",
+        description=(
+            "SQLAlchemy database URL "
+            "(mariadb+mysqlconnector://user:pass@host:port/db)"
+        ),
     )
     pool_size: int = Field(
         default=5,
@@ -21,7 +24,9 @@ class MySQLConfig(BaseModel):
     pool_recycle: int = Field(
         default=3600,
         ge=60,
-        description="Recycle connections after this many seconds (avoids stale connections)",
+        description=(
+            "Recycle connections after this many seconds " "(avoids stale connections)"
+        ),
     )
 
     @property

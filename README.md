@@ -99,3 +99,7 @@ poetry run pytest tests/ --cov=src/pisolar --cov-report=html --cov-report=term  
 ## Systemd Service
 
 To run piSolar as a system service, see **[systemd](docs/SYSTEMD.md)**.
+
+## Releases
+
+For building, tagging, and publishing releases, see **[release process](docs/RELEASE.md)**.

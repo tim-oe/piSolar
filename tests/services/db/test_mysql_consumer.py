@@ -35,7 +35,9 @@ def mock_bus():
 def consumer(engine, mock_bus):
     with (
         patch("pisolar.services.db.mysql_consumer.get_event_bus") as mock_get_bus,
-        patch("pisolar.services.db.mysql_consumer.create_db_engine") as mock_create_engine,
+        patch(
+            "pisolar.services.db.mysql_consumer.create_db_engine"
+        ) as mock_create_engine,
     ):
         mock_get_bus.return_value = mock_bus
         mock_create_engine.return_value = engine
@@ -61,7 +63,9 @@ class TestMySQLConsumerInit:
     def test_subscribes_to_sensor_reading_event(self, engine, mock_bus):
         with (
             patch("pisolar.services.db.mysql_consumer.get_event_bus") as mock_get_bus,
-            patch("pisolar.services.db.mysql_consumer.create_db_engine") as mock_create_engine,
+            patch(
+                "pisolar.services.db.mysql_consumer.create_db_engine"
+            ) as mock_create_engine,
         ):
             mock_get_bus.return_value = mock_bus
             mock_create_engine.return_value = engine
@@ -74,16 +78,24 @@ class TestMySQLConsumerInit:
 class TestMySQLConsumerTemperatureReadings:
     """Tests for temperature reading persistence."""
 
-    def test_handle_temperature_reading_persists_value(self, consumer, engine, seeded_sensors):
-        reading = TemperatureReading(type="temperature", name="0000007b409e", sensor_id=1, value=22.5)
+    def test_handle_temperature_reading_persists_value(
+        self, consumer, engine, seeded_sensors
+    ):
+        reading = TemperatureReading(
+            type="temperature", name="0000007b409e", sensor_id=1, value=22.5
+        )
         consumer._handle_reading(reading)
 
         with Session(engine) as session:
             row = session.execute(select(TemperatureRecord)).scalar_one()
             assert row.value == pytest.approx(22.5)
 
-    def test_handle_temperature_reading_links_sensor_id(self, consumer, engine, seeded_sensors):
-        reading = TemperatureReading(type="temperature", name="0000007b409e", sensor_id=1, value=22.5)
+    def test_handle_temperature_reading_links_sensor_id(
+        self, consumer, engine, seeded_sensors
+    ):
+        reading = TemperatureReading(
+            type="temperature", name="0000007b409e", sensor_id=1, value=22.5
+        )
         consumer._handle_reading(reading)
 
         with Session(engine) as session:
@@ -91,7 +103,9 @@ class TestMySQLConsumerTemperatureReadings:
             assert row.sensor_id == 1
 
     def test_handle_negative_temperature(self, consumer, engine, seeded_sensors):
-        reading = TemperatureReading(type="temperature", name="0000007b409e", sensor_id=1, value=-5.2)
+        reading = TemperatureReading(
+            type="temperature", name="0000007b409e", sensor_id=1, value=-5.2
+        )
         consumer._handle_reading(reading)
 
         with Session(engine) as session:
@@ -101,7 +115,9 @@ class TestMySQLConsumerTemperatureReadings:
     def test_multiple_readings_from_same_sensor(self, consumer, engine, seeded_sensors):
         for value in [20.0, 21.0, 22.0]:
             consumer._handle_reading(
-                TemperatureReading(type="temperature", name="0000007b409e", sensor_id=1, value=value)
+                TemperatureReading(
+                    type="temperature", name="0000007b409e", sensor_id=1, value=value
+                )
             )
 
         with Session(engine) as session:
@@ -109,7 +125,9 @@ class TestMySQLConsumerTemperatureReadings:
             assert len(readings) == 3
             assert all(r.sensor_id == 1 for r in readings)
 
-    def test_multiple_sensors_each_get_own_sensor_id(self, consumer, engine, seeded_sensors):
+    def test_multiple_sensors_each_get_own_sensor_id(
+        self, consumer, engine, seeded_sensors
+    ):
         for sensor_id in range(1, 5):
             consumer._handle_reading(
                 TemperatureReading(

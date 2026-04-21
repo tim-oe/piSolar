@@ -76,13 +76,18 @@ if TYPE_CHECKING:
 
 
 class SolarRecord(Base):
-    """Persisted row for a single :class:`~pisolar.sensors.renogy.solar_reading.SolarReading`."""
+    """Persisted row for a single
+    :class:`~pisolar.sensors.renogy.solar_reading.SolarReading`."""
 
     __tablename__ = "solar_reading"
 
-    id: Mapped[int] = mapped_column(INTEGER(unsigned=True), primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        INTEGER(unsigned=True), primary_key=True, autoincrement=True
+    )
     sensor_name: Mapped[str] = mapped_column(VARCHAR(100), nullable=False)
-    read_time: Mapped[datetime] = mapped_column(DATETIME(fsp=6), nullable=False, index=True)
+    read_time: Mapped[datetime] = mapped_column(
+        DATETIME(fsp=6), nullable=False, index=True
+    )
 
     # Device info
     model: Mapped[Optional[str]] = mapped_column(VARCHAR(64))
@@ -111,23 +116,46 @@ class SolarRecord(Base):
     pv_power: Mapped[Optional[int]] = mapped_column(SMALLINT(unsigned=True))
 
     # Daily statistics
-    battery_min_voltage_today: Mapped[Optional[float]] = mapped_column(FLOAT(unsigned=True))
-    battery_max_voltage_today: Mapped[Optional[float]] = mapped_column(FLOAT(unsigned=True))
-    max_charging_current_today: Mapped[Optional[float]] = mapped_column(FLOAT(unsigned=True))
-    max_discharging_current_today: Mapped[Optional[float]] = mapped_column(FLOAT(unsigned=True))
-    max_charging_power_today: Mapped[Optional[int]] = mapped_column(SMALLINT(unsigned=True))
-    max_discharging_power_today: Mapped[Optional[int]] = mapped_column(SMALLINT(unsigned=True))
-    charging_amp_hours_today: Mapped[Optional[int]] = mapped_column(SMALLINT(unsigned=True))
-    discharging_amp_hours_today: Mapped[Optional[int]] = mapped_column(SMALLINT(unsigned=True))
-    power_generation_today: Mapped[Optional[float]] = mapped_column(FLOAT(unsigned=True))
-    power_consumption_today: Mapped[Optional[float]] = mapped_column(FLOAT(unsigned=True))
+    battery_min_voltage_today: Mapped[Optional[float]] = mapped_column(
+        FLOAT(unsigned=True)
+    )
+    battery_max_voltage_today: Mapped[Optional[float]] = mapped_column(
+        FLOAT(unsigned=True)
+    )
+    max_charging_current_today: Mapped[Optional[float]] = mapped_column(
+        FLOAT(unsigned=True)
+    )
+    max_discharging_current_today: Mapped[Optional[float]] = mapped_column(
+        FLOAT(unsigned=True)
+    )
+    max_charging_power_today: Mapped[Optional[int]] = mapped_column(
+        SMALLINT(unsigned=True)
+    )
+    max_discharging_power_today: Mapped[Optional[int]] = mapped_column(
+        SMALLINT(unsigned=True)
+    )
+    charging_amp_hours_today: Mapped[Optional[int]] = mapped_column(
+        SMALLINT(unsigned=True)
+    )
+    discharging_amp_hours_today: Mapped[Optional[int]] = mapped_column(
+        SMALLINT(unsigned=True)
+    )
+    power_generation_today: Mapped[Optional[float]] = mapped_column(
+        FLOAT(unsigned=True)
+    )
+    power_consumption_today: Mapped[Optional[float]] = mapped_column(
+        FLOAT(unsigned=True)
+    )
 
     # Lifetime statistics
-    power_generation_total: Mapped[Optional[int]] = mapped_column(INTEGER(unsigned=True))
+    power_generation_total: Mapped[Optional[int]] = mapped_column(
+        INTEGER(unsigned=True)
+    )
 
     @classmethod
     def from_reading(cls, reading: SolarReading) -> SolarRecord:
-        """Build a :class:`SolarRecord` from a :class:`~pisolar.sensors.renogy.solar_reading.SolarReading`.
+        """Build a :class:`SolarRecord` from a
+        :class:`~pisolar.sensors.renogy.solar_reading.SolarReading`.
 
         The ``read_time`` timezone info is stripped before storage because
         MySQL ``DATETIME`` columns are not timezone-aware.
