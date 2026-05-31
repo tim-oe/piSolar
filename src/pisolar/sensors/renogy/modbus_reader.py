@@ -118,6 +118,9 @@ class ModbusReader(RenogyReader):
         baud_rate: int = DEFAULT_BAUD_RATE,
         slave_address: int = DEFAULT_SLAVE_ADDRESS,
         max_retries: int = DEFAULT_MAX_RETRIES,
+        serial_adapter: str = "usb",
+        uart_tx_pin: int | None = None,
+        uart_rx_pin: int | None = None,
     ) -> None:
         """Initialize the Modbus reader.
 
@@ -128,6 +131,9 @@ class ModbusReader(RenogyReader):
             baud_rate: Serial baud rate (default 9600)
             slave_address: Modbus slave address (default 1)
             max_retries: Number of retry attempts for connection failures
+            serial_adapter: Physical adapter type ("usb" or "uart")
+            uart_tx_pin: Optional BCM GPIO TX pin (for diagnostics/docs)
+            uart_rx_pin: Optional BCM GPIO RX pin (for diagnostics/docs)
         """
         super().__init__(max_retries=max_retries, retry_delay=_RETRY_DELAY)
         self._device_path = device_path
@@ -135,6 +141,9 @@ class ModbusReader(RenogyReader):
         self._device_type: DeviceType = device_type
         self._baud_rate = baud_rate
         self._slave_address = slave_address
+        self._serial_adapter = serial_adapter
+        self._uart_tx_pin = uart_tx_pin
+        self._uart_rx_pin = uart_rx_pin
         self._client = None
 
         # Dependency that can be overridden in tests by setting instance variable
@@ -197,10 +206,16 @@ class ModbusReader(RenogyReader):
 
             connect_elapsed_ms = (time.perf_counter() - start_time) * 1000
             self._logger.debug(
-                "Connected to %s at %s (%.1fms)",
+                "Connected to %s at %s via %s (%.1fms)%s",
                 self._device_name,
                 self._device_path,
+                self._serial_adapter,
                 connect_elapsed_ms,
+                (
+                    f" [TX GPIO{self._uart_tx_pin}, RX GPIO{self._uart_rx_pin}]"
+                    if self._uart_tx_pin is not None and self._uart_rx_pin is not None
+                    else ""
+                ),
             )
 
             data: dict[str, Any] = {}
@@ -291,13 +306,18 @@ class ModbusReader(RenogyReader):
             # Add metadata
             data["__device"] = self._device_name
             data["__client"] = "ModbusReader"
+            data["__serial_adapter"] = self._serial_adapter
             data["__connect_ms"] = round(connect_elapsed_ms, 1)
             data["__total_ms"] = round(total_elapsed_ms, 1)
+            if self._uart_tx_pin is not None:
+                data["__uart_tx_pin"] = self._uart_tx_pin
+            if self._uart_rx_pin is not None:
+                data["__uart_rx_pin"] = self._uart_rx_pin
 
             self._logger.info(
                 "Read %d field(s) from %s via Modbus "
                 "(connect: %.1fms, total: %.1fms, errors: %d)",
-                len(data) - 4,  # Exclude metadata fields
+                len([k for k in data if not k.startswith("__")]),
                 self._device_name,
                 connect_elapsed_ms,
                 total_elapsed_ms,

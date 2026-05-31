@@ -298,7 +298,12 @@ def show_config(ctx: click.Context) -> None:
             click.echo(f"          scan_timeout: {sensor_config.scan_timeout}s")
         else:
             click.echo(f"      - {sensor_config.name} [serial/modbus]:")
-            click.echo(f"          device_path: {sensor_config.device_path}")
+            click.echo(f"          serial_adapter: {sensor_config.serial_adapter}")
+            click.echo(f"          device_path: {sensor_config.resolved_device_path}")
+            if sensor_config.serial_adapter == "uart":
+                click.echo(f"          uart_device_path: {sensor_config.uart_device_path}")
+                click.echo(f"          uart_tx_pin: {sensor_config.uart_tx_pin}")
+                click.echo(f"          uart_rx_pin: {sensor_config.uart_rx_pin}")
             click.echo(f"          baud_rate: {sensor_config.baud_rate}")
             click.echo(f"          slave_address: {sensor_config.slave_address}")
         click.echo(f"          device_type: {sensor_config.device_type}")

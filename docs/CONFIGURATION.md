@@ -95,11 +95,23 @@ renogy:
   sensors:
     - name: wanderer
       read_type: serial
-      device_path: "/dev/ttyUSB0"
+      serial_adapter: usb          # usb or uart
+      device_path: "/dev/ttyUSB0"  # used for usb adapters
+      uart_device_path: "/dev/serial0"  # used when serial_adapter: uart
+      uart_tx_pin: 14              # optional BCM metadata for UART routing
+      uart_rx_pin: 15              # optional BCM metadata for UART routing
       baud_rate: 9600             # Optional: default 9600
       slave_address: 1            # Optional: Modbus slave address, default 1
       max_retries: 3              # Optional: read retry attempts
 ```
+
+For DFRobot UART-to-RS485 modules, set `serial_adapter: uart` and point
+`uart_device_path` at the UART device exposed by your Pi (commonly
+`/dev/serial0` or `/dev/ttyAMA1` depending on overlays).
+
+If you also use the Adafruit GPS HAT, remember it consumes a hardware UART by
+default, so Renogy RS485 should use a different UART mapping/overlay or a USB
+RS485 adapter.
 
 ### Metrics Output
 
@@ -183,6 +195,32 @@ ls /sys/bus/w1/devices/
 ```
 
 The address is the portion after the `28-` prefix (e.g., `0000007c6850`).
+
+### Enabling 1-Wire On Raspberry Pi
+
+For Raspberry Pi OS Bookworm+, configure the 1-Wire overlay in
+`/boot/firmware/config.txt`.
+
+Default pin example:
+
+```ini
+dtoverlay=w1-gpio
+```
+
+Custom pin example (BCM GPIO 27):
+
+```ini
+dtoverlay=w1-gpio,gpiopin=27
+```
+
+Reboot after changing overlays, then verify:
+
+```bash
+ls /sys/bus/w1/devices/
+```
+
+You should see `w1_bus_master1` and one or more sensor IDs like
+`28-0000007c6850`.
 
 ### Finding Renogy BT-2 MAC Address
 

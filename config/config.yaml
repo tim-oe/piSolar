@@ -8,7 +8,7 @@
 # Temperature sensor configuration (1-Wire sensors)
 # address: sensor_id without family prefix (e.g. 0000007c6850 for DS18B20)
 temperature:
-  enabled: !ENV ${PISOLAR_TEMPERATURE_ENABLED:true}
+  enabled: !ENV ${PISOLAR_TEMPERATURE_ENABLED:false}
   sensors:
     - id: "1"
       address: "0000007b409e"
@@ -32,8 +32,12 @@ renogy:
   sensors:
     - name: !ENV ${PISOLAR_RENOGY_NAME:rover-40}
       read_type: !ENV ${PISOLAR_RENOGY_READ_TYPE:serial}
+      serial_adapter: !ENV ${PISOLAR_RENOGY_SERIAL_ADAPTER:uart} # usb or uart
       slave_address: !ENV ${PISOLAR_RENOGY_DEVICE_ADDR:16} # reover 40 defaulted to 16 the 20 to 1 the default
-      device_path: !ENV ${PISOLAR_RENOGY_DEVICE_PATH:/dev/ttyACM0}  # Serial port path
+      device_path: !ENV ${PISOLAR_RENOGY_DEVICE_PATH:/dev/ttyAMA0}  # USB-RS485 serial path
+      uart_device_path: !ENV ${PISOLAR_RENOGY_UART_DEVICE_PATH:/dev/serial0}  # Used when serial_adapter=uart
+      uart_tx_pin: !ENV ${PISOLAR_RENOGY_UART_TX_PIN:12}  # Optional BCM TX pin metadata
+      uart_rx_pin: !ENV ${PISOLAR_RENOGY_UART_RX_PIN:13}  # Optional BCM RX pin metadata
       scan_timeout: !ENV ${PISOLAR_RENOGY_SCAN_TIMEOUT:15.0}  # Timeout in seconds for BLE device scanning
       max_retries: !ENV ${PISOLAR_RENOGY_MAX_RETRIES:3}  # Number of retry attempts on failure
 
@@ -43,7 +47,7 @@ metrics:
 
 # SQLite storage for persisting sensor readings as JSON
 storage:
-  enabled: !ENV ${PISOLAR_STORAGE_ENABLED:true}
+  enabled: !ENV ${PISOLAR_STORAGE_ENABLED:false}
   db_path: !ENV ${PISOLAR_STORAGE_DB_PATH:/var/lib/piSolar/readings.db}
   retention_days: !ENV ${PISOLAR_STORAGE_RETENTION_DAYS:30}
   prune_schedule:
@@ -61,7 +65,7 @@ rabbitmq:
 
 # MySQL storage for persisting solar and temperature readings (SQLAlchemy)
 mysql:
-  enabled: !ENV ${PISOLAR_MYSQL_ENABLED:true}
+  enabled: !ENV ${PISOLAR_MYSQL_ENABLED:false}
   url: !ENV ${PISOLAR_MYSQL_URL:mariadb+mysqlconnector://pisolar:pisolar@localhost:3306/pisolar}
   pool_size: !ENV ${PISOLAR_MYSQL_POOL_SIZE:5}
   pool_recycle: !ENV ${PISOLAR_MYSQL_POOL_RECYCLE:3600}

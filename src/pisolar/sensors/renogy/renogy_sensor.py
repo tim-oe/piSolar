@@ -121,7 +121,12 @@ class RenogySensor(BaseSensor):
         if self._config.read_type == "bt":
             result["mac_address"] = self._config.mac_address
         else:
-            result["device_path"] = self._config.device_path
+            result["serial_adapter"] = self._config.serial_adapter
+            result["device_path"] = self._config.resolved_device_path
+            if self._config.serial_adapter == "uart":
+                result["uart_device_path"] = self._config.uart_device_path
+                result["uart_tx_pin"] = self._config.uart_tx_pin
+                result["uart_rx_pin"] = self._config.uart_rx_pin
 
         return result
 

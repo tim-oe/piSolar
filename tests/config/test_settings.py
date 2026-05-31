@@ -99,3 +99,30 @@ renogy:
         assert settings.renogy.sensors[1].name == "wanderer"
         assert settings.renogy.sensors[1].read_type == "serial"
         assert settings.renogy.sensors[1].device_path == "/dev/ttyUSB0"
+
+    def test_renogy_uart_rs485_config(self, tmp_path: Path):
+        """Test Renogy UART RS485 configuration parsing."""
+        config_content = """
+renogy:
+  enabled: true
+  sensors:
+    - name: rover-uart
+      read_type: serial
+      serial_adapter: uart
+      device_path: "/dev/ttyUSB0"
+      uart_device_path: "/dev/serial0"
+      uart_tx_pin: 14
+      uart_rx_pin: 15
+"""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(config_content)
+
+        settings = Settings.from_yaml(str(config_file))
+        sensor = settings.renogy.sensors[0]
+
+        assert sensor.serial_adapter == "uart"
+        assert sensor.device_path == "/dev/ttyUSB0"
+        assert sensor.uart_device_path == "/dev/serial0"
+        assert sensor.uart_tx_pin == 14
+        assert sensor.uart_rx_pin == 15
+        assert sensor.resolved_device_path == "/dev/serial0"

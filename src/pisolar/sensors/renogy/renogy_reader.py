@@ -59,12 +59,15 @@ class RenogyReader(ABC):
             )
         elif isinstance(config, RenogySerialSensorConfig):
             return ModbusReader(
-                device_path=config.device_path,
+                device_path=config.resolved_device_path,
                 device_name=config.name,
                 device_type=config.device_type,
                 baud_rate=config.baud_rate,
                 slave_address=config.slave_address,
                 max_retries=config.max_retries,
+                serial_adapter=config.serial_adapter,
+                uart_tx_pin=config.uart_tx_pin,
+                uart_rx_pin=config.uart_rx_pin,
             )
         else:
             raise ValueError(f"Unknown config type: {type(config)}")

@@ -93,6 +93,19 @@ For temperature sensors, ensure the 1-Wire interface is enabled:
 dtoverlay=w1-gpio
 ```
 
+If you need a specific GPIO for 1-Wire, set it explicitly (example GPIO 27):
+
+```bash
+# Add to /boot/firmware/config.txt
+dtoverlay=w1-gpio,gpiopin=27
+```
+
+After reboot, verify the kernel device appears:
+
+```bash
+ls /sys/bus/w1/devices/
+```
+
 ## Troubleshooting
 
 ### Service Won't Start
