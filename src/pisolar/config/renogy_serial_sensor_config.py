@@ -26,7 +26,7 @@ class RenogySerialSensorConfig(BaseModel):
     )
     serial_adapter: Literal["usb", "uart"] = Field(
         default="usb",
-        description="Serial adapter type: 'usb' (USB-RS485) or 'uart' (GPIO UART-RS485)",
+        description="Adapter type: 'usb' (USB-RS485) or 'uart' (GPIO UART-RS485)",
     )
     uart_device_path: str | None = Field(
         default=None,

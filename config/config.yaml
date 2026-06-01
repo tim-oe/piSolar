@@ -33,11 +33,11 @@ renogy:
     - name: !ENV ${PISOLAR_RENOGY_NAME:rover-40}
       read_type: !ENV ${PISOLAR_RENOGY_READ_TYPE:serial}
       serial_adapter: !ENV ${PISOLAR_RENOGY_SERIAL_ADAPTER:uart} # usb or uart
-      slave_address: !ENV ${PISOLAR_RENOGY_DEVICE_ADDR:16} # reover 40 defaulted to 16 the 20 to 1 the default
-      device_path: !ENV ${PISOLAR_RENOGY_DEVICE_PATH:/dev/ttyAMA0}  # USB-RS485 serial path
-      uart_device_path: !ENV ${PISOLAR_RENOGY_UART_DEVICE_PATH:/dev/serial0}  # Used when serial_adapter=uart
-      uart_tx_pin: !ENV ${PISOLAR_RENOGY_UART_TX_PIN:12}  # Optional BCM TX pin metadata
-      uart_rx_pin: !ENV ${PISOLAR_RENOGY_UART_RX_PIN:13}  # Optional BCM RX pin metadata
+      slave_address: !ENV ${PISOLAR_RENOGY_DEVICE_ADDR:3} # reover 40 defaulted to 16 the 20 to 1 the default
+      #device_path: !ENV ${PISOLAR_RENOGY_DEVICE_PATH:/dev/ttyUSB0}  # USB-RS485 serial path
+      uart_device_path: !ENV ${PISOLAR_RENOGY_UART_DEVICE_PATH:/dev/ttyAMA5}  # Used when serial_adapter=uart
+      uart_tx_pin: !ENV ${PISOLAR_RENOGY_UART_TX_PIN:12}  # BCM GPIO12 (physical pin 32) → DFRobot T, verified
+      uart_rx_pin: !ENV ${PISOLAR_RENOGY_UART_RX_PIN:13}  # BCM GPIO13 (physical pin 33) → DFRobot R, verified
       scan_timeout: !ENV ${PISOLAR_RENOGY_SCAN_TIMEOUT:15.0}  # Timeout in seconds for BLE device scanning
       max_retries: !ENV ${PISOLAR_RENOGY_MAX_RETRIES:3}  # Number of retry attempts on failure
 

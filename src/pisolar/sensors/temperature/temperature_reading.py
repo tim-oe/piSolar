@@ -8,7 +8,9 @@ from pisolar.sensors.sensor_reading import SensorReading
 class TemperatureReading(SensorReading):
     """Temperature sensor reading with value and unit."""
 
-    sensor_id: int | None = None  # required by MySQL consumer; optional for sqlite/rabbitmq/logging
+    sensor_id: int | None = (
+        None  # required by MySQL consumer; optional for sqlite/rabbitmq/logging
+    )
     value: float
     unit: str = "C"  # Celsius by default
 

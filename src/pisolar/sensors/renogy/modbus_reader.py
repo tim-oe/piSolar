@@ -1,10 +1,21 @@
-"""Modbus/Serial reader for Renogy charge controllers using pymodbus."""
+"""Modbus/Serial reader for Renogy charge controllers.
+
+Two transports are supported:
+  - pymodbus (default, used for USB RS485 adapters)
+  - raw pyserial RTU (used for GPIO UART adapters, e.g. DFRobot DFR0845)
+
+pymodbus calls reset_input_buffer() between TX and RX which drops the first
+bytes of the response on some Pi UART configurations. The raw pyserial
+transport avoids this by transmitting, waiting for TX to complete, then
+reading without any buffer flush.
+"""
 
 import asyncio
 import time
 from functools import partial
 from typing import Any
 
+import serial
 from pymodbus.client import ModbusSerialClient
 
 from pisolar.config.device_type import DeviceType
@@ -17,6 +28,90 @@ from pisolar.sensors.renogy.renogy_reader import RenogyReader
 
 # Delay between retry attempts
 _RETRY_DELAY = 1.0  # seconds between retries
+
+
+def _crc16(data: bytes) -> int:
+    """Standard Modbus CRC16."""
+    crc = 0xFFFF
+    for byte in data:
+        crc ^= byte
+        for _ in range(8):
+            crc = (crc >> 1) ^ 0xA001 if crc & 1 else crc >> 1
+    return crc
+
+
+def _build_modbus_frame(slave: int, register: int, count: int) -> bytes:
+    """Build a Modbus RTU FC03 read holding registers frame."""
+    payload = bytes(
+        [slave, 0x03, register >> 8, register & 0xFF, count >> 8, count & 0xFF]
+    )
+    crc = _crc16(payload)
+    return payload + bytes([crc & 0xFF, crc >> 8])
+
+
+def _read_registers_raw(
+    port: serial.Serial,
+    slave: int,
+    register: int,
+    count: int,
+    timeout: float = 1.0,
+) -> list[int]:
+    """Read Modbus holding registers using raw pyserial.
+
+    Does not flush the input buffer between TX and RX — required for
+    GPIO UART adapters (e.g. DFRobot DFR0845) where the Pi UART delivers
+    the response immediately after TX completes.
+
+    Args:
+        port:     Open pyserial Serial instance
+        slave:    Modbus slave address
+        register: Starting register address
+        count:    Number of 16-bit registers to read
+        timeout:  Read timeout in seconds
+
+    Returns:
+        List of count unsigned 16-bit integers
+
+    Raises:
+        RuntimeError: On timeout, short response, or CRC mismatch
+    """
+    frame = _build_modbus_frame(slave, register, count)
+    expected = 3 + count * 2 + 2  # addr + fc + byte_count + data + CRC
+
+    port.reset_input_buffer()
+    port.write(frame)
+    port.flush()
+
+    buf = bytearray()
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        chunk = port.read(64)
+        if chunk:
+            buf += chunk
+        if len(buf) >= expected:
+            break
+
+    if len(buf) < expected:
+        raise RuntimeError(
+            f"Modbus timeout on register 0x{register:04X}: "
+            f"got {len(buf)}/{expected} bytes" + (f" raw={buf.hex()}" if buf else "")
+        )
+
+    computed = _crc16(bytes(buf[:-2]))
+    received = buf[-2] | (buf[-1] << 8)
+    if computed != received:
+        raise RuntimeError(
+            f"Modbus CRC mismatch on register 0x{register:04X}: "
+            f"computed={computed:#06x} received={received:#06x}"
+        )
+
+    if buf[1] & 0x80:
+        raise RuntimeError(
+            f"Modbus exception on register 0x{register:04X}: code {buf[2]:#04x}"
+        )
+
+    return [(buf[3 + i * 2] << 8) | buf[4 + i * 2] for i in range(count)]
+
 
 # Renogy Modbus Register Map (from docs/rover_modbus.docx)
 # Format: (register_address, field_name, scale_factor, description)
@@ -185,10 +280,61 @@ class ModbusReader(RenogyReader):
         )
 
     def _read_sync(self) -> dict[str, Any]:
-        """Synchronous implementation of Modbus read."""
+        """Synchronous implementation of Modbus read.
+
+        Uses raw pyserial transport for UART adapters (serial_adapter='uart')
+        to avoid pymodbus reset_input_buffer() dropping response bytes on Pi
+        GPIO UARTs. Falls back to pymodbus for USB adapters.
+        """
+        if self._serial_adapter == "uart":
+            return self._read_sync_raw()
+        return self._read_sync_pymodbus()
+
+    def _read_sync_raw(self) -> dict[str, Any]:
+        """Read using raw pyserial RTU — required for GPIO UART adapters."""
         start_time = time.perf_counter()
 
-        # Create client using injected class
+        try:
+            port = serial.Serial(
+                port=self._device_path,
+                baudrate=self._baud_rate,
+                bytesize=8,
+                parity="N",
+                stopbits=1,
+                timeout=0.001,
+            )
+        except serial.SerialException as e:
+            raise RuntimeError(f"Failed to open {self._device_path}: {e}") from e
+
+        connect_elapsed_ms = (time.perf_counter() - start_time) * 1000
+        self._logger.debug(
+            "Opened %s at %s via raw UART (%.1fms)%s",
+            self._device_name,
+            self._device_path,
+            connect_elapsed_ms,
+            (
+                f" [TX GPIO{self._uart_tx_pin}, RX GPIO{self._uart_rx_pin}]"
+                if self._uart_tx_pin is not None and self._uart_rx_pin is not None
+                else ""
+            ),
+        )
+
+        try:
+            return self._read_registers(
+                read_fn=lambda reg, count: _read_registers_raw(
+                    port, self._slave_address, reg, count
+                ),
+                start_time=start_time,
+                connect_elapsed_ms=connect_elapsed_ms,
+                client_label="ModbusReader/raw",
+            )
+        finally:
+            port.close()
+
+    def _read_sync_pymodbus(self) -> dict[str, Any]:
+        """Read using pymodbus — used for USB RS485 adapters."""
+        start_time = time.perf_counter()
+
         client = self._client_class(
             port=self._device_path,
             baudrate=self._baud_rate,
@@ -206,131 +352,111 @@ class ModbusReader(RenogyReader):
 
             connect_elapsed_ms = (time.perf_counter() - start_time) * 1000
             self._logger.debug(
-                "Connected to %s at %s via %s (%.1fms)%s",
+                "Connected to %s at %s via pymodbus (%.1fms)",
                 self._device_name,
                 self._device_path,
-                self._serial_adapter,
                 connect_elapsed_ms,
-                (
-                    f" [TX GPIO{self._uart_tx_pin}, RX GPIO{self._uart_rx_pin}]"
-                    if self._uart_tx_pin is not None and self._uart_rx_pin is not None
-                    else ""
-                ),
             )
 
-            data: dict[str, Any] = {}
-            read_errors = 0
-
-            # Read each register
-            for reg_addr, field_name, scale_factor, _description in REGISTER_MAP:
-                try:
-                    result = client.read_holding_registers(
-                        address=reg_addr,
-                        count=1,
-                        device_id=self._slave_address,
-                    )
-
-                    if result.isError():
-                        self._logger.debug(
-                            "Error reading register 0x%04X (%s): %s",
-                            reg_addr,
-                            field_name,
-                            result,
-                        )
-                        read_errors += 1
-                        continue
-
-                    raw_value = result.registers[0]
-
-                    # Apply scale factor
-                    value = raw_value * scale_factor
-
-                    # Round floats for cleaner output
-                    if isinstance(scale_factor, float):
-                        value = round(value, 2)
-
-                    data[field_name] = value
-
-                except Exception as e:
-                    self._logger.debug(
-                        "Exception reading register 0x%04X (%s): %s",
-                        reg_addr,
-                        field_name,
-                        e,
-                    )
-                    read_errors += 1
-
-            # Read combined temperature register (0x0103)
-            # High byte = controller temp, Low byte = battery temp (both signed)
-            try:
+            def _pymodbus_read(reg: int, count: int) -> list[int]:
                 result = client.read_holding_registers(
-                    address=TEMPERATURE_REGISTER,
-                    count=1,
-                    device_id=self._slave_address,
+                    address=reg, count=count, device_id=self._slave_address
                 )
-                if not result.isError():
-                    raw_temp = result.registers[0]
-                    ctrl_temp, batt_temp = _parse_temperature_register(raw_temp)
-                    data["controller_temperature"] = ctrl_temp
-                    data["battery_temperature"] = batt_temp
-                    self._logger.debug(
-                        "Temperature register 0x%04X = 0x%04X -> ctrl=%d, batt=%d",
-                        TEMPERATURE_REGISTER,
-                        raw_temp,
-                        ctrl_temp,
-                        batt_temp,
-                    )
-                else:
-                    read_errors += 1
-            except Exception as e:
-                self._logger.debug("Exception reading temperature register: %s", e)
-                read_errors += 1
+                if result.isError():
+                    raise RuntimeError(str(result))
+                return list(result.registers)
 
-            # Try to read charging status
-            try:
-                result = client.read_holding_registers(
-                    address=STATUS_REGISTER,
-                    count=1,
-                    device_id=self._slave_address,
-                )
-                if not result.isError():
-                    status_code = result.registers[0] & 0xFF
-                    data["charging_status"] = CHARGING_STATUS.get(
-                        status_code, f"unknown_{status_code}"
-                    )
-            except Exception:
-                pass  # Status register may not be available on all models
-
-            total_elapsed_ms = (time.perf_counter() - start_time) * 1000
-
-            # Add metadata
-            data["__device"] = self._device_name
-            data["__client"] = "ModbusReader"
-            data["__serial_adapter"] = self._serial_adapter
-            data["__connect_ms"] = round(connect_elapsed_ms, 1)
-            data["__total_ms"] = round(total_elapsed_ms, 1)
-            if self._uart_tx_pin is not None:
-                data["__uart_tx_pin"] = self._uart_tx_pin
-            if self._uart_rx_pin is not None:
-                data["__uart_rx_pin"] = self._uart_rx_pin
-
-            self._logger.info(
-                "Read %d field(s) from %s via Modbus "
-                "(connect: %.1fms, total: %.1fms, errors: %d)",
-                len([k for k in data if not k.startswith("__")]),
-                self._device_name,
-                connect_elapsed_ms,
-                total_elapsed_ms,
-                read_errors,
+            return self._read_registers(
+                read_fn=_pymodbus_read,
+                start_time=start_time,
+                connect_elapsed_ms=connect_elapsed_ms,
+                client_label="ModbusReader/pymodbus",
             )
-
-            if len(data) <= 4:  # Only metadata, no actual data
-                raise RuntimeError(
-                    "Renogy device returned no readable data. "
-                    "Check device connection and Modbus address."
-                )
-
-            return data
-
         finally:
             client.close()
+
+    def _read_registers(
+        self,
+        read_fn: Any,
+        start_time: float,
+        connect_elapsed_ms: float,
+        client_label: str,
+    ) -> dict[str, Any]:
+        """Common register reading logic shared by both transports."""
+        data: dict[str, Any] = {}
+        read_errors = 0
+
+        for reg_addr, field_name, scale_factor, _description in REGISTER_MAP:
+            try:
+                values = read_fn(reg_addr, 1)
+                raw_value = values[0]
+                value = raw_value * scale_factor
+                if isinstance(scale_factor, float):
+                    value = round(value, 2)
+                data[field_name] = value
+            except Exception as e:
+                self._logger.debug(
+                    "Error reading register 0x%04X (%s): %s",
+                    reg_addr,
+                    field_name,
+                    e,
+                )
+                read_errors += 1
+
+        # Combined temperature register
+        try:
+            values = read_fn(TEMPERATURE_REGISTER, 1)
+            raw_temp = values[0]
+            ctrl_temp, batt_temp = _parse_temperature_register(raw_temp)
+            data["controller_temperature"] = ctrl_temp
+            data["battery_temperature"] = batt_temp
+            self._logger.debug(
+                "Temperature register 0x%04X = 0x%04X -> ctrl=%d, batt=%d",
+                TEMPERATURE_REGISTER,
+                raw_temp,
+                ctrl_temp,
+                batt_temp,
+            )
+        except Exception as e:
+            self._logger.debug("Exception reading temperature register: %s", e)
+            read_errors += 1
+
+        # Charging status register
+        try:
+            values = read_fn(STATUS_REGISTER, 1)
+            status_code = values[0] & 0xFF
+            data["charging_status"] = CHARGING_STATUS.get(
+                status_code, f"unknown_{status_code}"
+            )
+        except Exception:
+            pass
+
+        total_elapsed_ms = (time.perf_counter() - start_time) * 1000
+
+        data["__device"] = self._device_name
+        data["__client"] = client_label
+        data["__serial_adapter"] = self._serial_adapter
+        data["__connect_ms"] = round(connect_elapsed_ms, 1)
+        data["__total_ms"] = round(total_elapsed_ms, 1)
+        if self._uart_tx_pin is not None:
+            data["__uart_tx_pin"] = self._uart_tx_pin
+        if self._uart_rx_pin is not None:
+            data["__uart_rx_pin"] = self._uart_rx_pin
+
+        self._logger.info(
+            "Read %d field(s) from %s via Modbus "
+            "(connect: %.1fms, total: %.1fms, errors: %d)",
+            len([k for k in data if not k.startswith("__")]),
+            self._device_name,
+            connect_elapsed_ms,
+            total_elapsed_ms,
+            read_errors,
+        )
+
+        if len(data) <= 4:
+            raise RuntimeError(
+                "Renogy device returned no readable data. "
+                "Check device connection and Modbus address."
+            )
+
+        return data

@@ -14,5 +14,5 @@ class TemperatureSensorItem(BaseModel):
     address: str = Field(description="1-Wire address of the sensor (no family prefix)")
     name: str | None = Field(
         default=None,
-        description="Optional human-readable label; upserted into solar_temperature_sensor lookup table",
+        description="Optional human-readable label for this sensor",
     )

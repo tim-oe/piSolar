@@ -1,13 +1,17 @@
 """Tests for ModbusReader."""
 
 import asyncio
-from unittest.mock import MagicMock
+import itertools
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from pisolar.sensors.renogy.modbus_reader import (
     ModbusReader,
+    _build_modbus_frame,
+    _crc16,
     _parse_temperature_register,
+    _read_registers_raw,
     _to_signed_8bit,
 )
 
@@ -321,7 +325,7 @@ class TestModbusReader:
 
         # Verify metadata
         assert data["__device"] == "wanderer"
-        assert data["__client"] == "ModbusReader"
+        assert data["__client"] == "ModbusReader/pymodbus"
 
     def test_read_with_negative_temperatures(self):
         """Test reading with negative temperatures (cold weather).
@@ -551,3 +555,398 @@ class TestModbusReader:
         # Controller at max positive, battery at max negative
         assert data["controller_temperature"] == 127
         assert data["battery_temperature"] == -127
+
+
+# =============================================================================
+# Raw pyserial transport helpers
+# =============================================================================
+
+
+class TestCrc16:
+    """Tests for Modbus CRC16 implementation."""
+
+    def test_known_frame_crc(self):
+        """CRC for a known FC03 request frame (slave=3, reg=0x0000, count=1)."""
+        # Frame: 03 03 00 00 00 01 + CRC
+        # CRC integer = 0xE885; stored little-endian → low byte=0x85, high byte=0xE8
+        payload = bytes([0x03, 0x03, 0x00, 0x00, 0x00, 0x01])
+        crc = _crc16(payload)
+        assert crc == 0xE885
+        assert crc & 0xFF == 0x85   # frame[-2] (low byte)
+        assert crc >> 8 == 0xE8     # frame[-1] (high byte)
+
+    def test_crc_empty(self):
+        """CRC of empty data is 0xFFFF (initial value)."""
+        assert _crc16(b"") == 0xFFFF
+
+    def test_crc_single_byte(self):
+        """CRC is deterministic for a single byte."""
+        crc1 = _crc16(bytes([0x03]))
+        crc2 = _crc16(bytes([0x03]))
+        assert crc1 == crc2
+
+    def test_crc_different_data_differs(self):
+        """Different payloads produce different CRCs."""
+        assert _crc16(bytes([0x01])) != _crc16(bytes([0x02]))
+
+
+class TestBuildModbusFrame:
+    """Tests for Modbus RTU FC03 frame builder."""
+
+    def test_frame_length(self):
+        """FC03 request is always 8 bytes (6 payload + 2 CRC)."""
+        frame = _build_modbus_frame(slave=1, register=0x0100, count=1)
+        assert len(frame) == 8
+
+    def test_frame_slave_address(self):
+        """First byte is the slave address."""
+        frame = _build_modbus_frame(slave=16, register=0x0100, count=1)
+        assert frame[0] == 16
+
+    def test_frame_function_code(self):
+        """Second byte is FC03 (0x03)."""
+        frame = _build_modbus_frame(slave=1, register=0x0100, count=1)
+        assert frame[1] == 0x03
+
+    def test_frame_register_high_low(self):
+        """Register address split into bytes 2-3."""
+        frame = _build_modbus_frame(slave=1, register=0x0107, count=1)
+        assert frame[2] == 0x01
+        assert frame[3] == 0x07
+
+    def test_frame_count(self):
+        """Register count split into bytes 4-5."""
+        frame = _build_modbus_frame(slave=1, register=0x0100, count=3)
+        assert frame[4] == 0x00
+        assert frame[5] == 0x03
+
+    def test_frame_crc_valid(self):
+        """CRC appended to frame is valid for the payload."""
+        frame = _build_modbus_frame(slave=3, register=0x0000, count=1)
+        payload = bytes(frame[:-2])
+        crc = _crc16(payload)
+        assert frame[-2] == crc & 0xFF
+        assert frame[-1] == crc >> 8
+
+    def test_known_wind_speed_frame(self):
+        """Exact frame verified against live SEN0483 sensor response."""
+        frame = _build_modbus_frame(slave=3, register=0x0000, count=1)
+        assert frame == bytes([0x03, 0x03, 0x00, 0x00, 0x00, 0x01, 0x85, 0xE8])
+
+
+def _make_raw_response(slave: int, register_values: list[int]) -> bytes:
+    """Build a valid Modbus FC03 response frame for given register values."""
+    count = len(register_values)
+    byte_count = count * 2
+    payload = bytes([slave, 0x03, byte_count])
+    for v in register_values:
+        payload += bytes([v >> 8, v & 0xFF])
+    crc = _crc16(payload)
+    return payload + bytes([crc & 0xFF, crc >> 8])
+
+
+def _make_mock_port(response: bytes) -> MagicMock:
+    """Create a mock pyserial Serial port that returns response bytes on read()."""
+    port = MagicMock()
+    # Return the full response on the first call, then endless empty bytes so
+    # the read loop never exhausts the side_effect iterator regardless of timeout.
+    port.read.side_effect = itertools.chain([response], itertools.repeat(b""))
+    port.baudrate = 9600
+    return port
+
+
+class TestReadRegistersRaw:
+    """Tests for _read_registers_raw() pyserial transport."""
+
+    def test_single_register_success(self):
+        """Reads a single register value from a valid response frame."""
+        response = _make_raw_response(slave=1, register_values=[85])
+        port = _make_mock_port(response)
+
+        values = _read_registers_raw(port, slave=1, register=0x0100, count=1)
+
+        assert values == [85]
+        port.reset_input_buffer.assert_called_once()
+        port.write.assert_called_once()
+        port.flush.assert_called_once()
+
+    def test_multiple_registers_success(self):
+        """Reads multiple register values from a valid response frame."""
+        response = _make_raw_response(slave=1, register_values=[132, 350])
+        port = _make_mock_port(response)
+
+        values = _read_registers_raw(port, slave=1, register=0x0101, count=2)
+
+        assert values == [132, 350]
+
+    def test_zero_value_register(self):
+        """Correctly reads a register value of zero."""
+        response = _make_raw_response(slave=3, register_values=[0])
+        port = _make_mock_port(response)
+
+        values = _read_registers_raw(port, slave=3, register=0x0000, count=1)
+
+        assert values == [0]
+
+    def test_max_uint16_value(self):
+        """Correctly reads a register value of 0xFFFF."""
+        response = _make_raw_response(slave=1, register_values=[0xFFFF])
+        port = _make_mock_port(response)
+
+        values = _read_registers_raw(port, slave=1, register=0x0100, count=1)
+
+        assert values == [0xFFFF]
+
+    def test_timeout_raises(self):
+        """Raises RuntimeError when no response received within timeout."""
+        port = MagicMock()
+        port.read.return_value = b""
+        port.baudrate = 9600
+
+        with pytest.raises(RuntimeError, match="Modbus timeout"):
+            _read_registers_raw(port, slave=1, register=0x0100, count=1, timeout=0.01)
+
+    def test_short_response_raises(self):
+        """Raises RuntimeError when response is shorter than expected."""
+        port = MagicMock()
+        port.read.side_effect = itertools.chain(
+            [bytes([0x01, 0x03])], itertools.repeat(b"")
+        )
+        port.baudrate = 9600
+
+        with pytest.raises(RuntimeError, match="Modbus timeout"):
+            _read_registers_raw(port, slave=1, register=0x0100, count=1, timeout=0.01)
+
+    def test_crc_mismatch_raises(self):
+        """Raises RuntimeError when CRC does not match."""
+        response = bytearray(_make_raw_response(slave=1, register_values=[85]))
+        response[-1] ^= 0xFF  # corrupt last CRC byte
+        port = _make_mock_port(bytes(response))
+
+        with pytest.raises(RuntimeError, match="CRC mismatch"):
+            _read_registers_raw(port, slave=1, register=0x0100, count=1)
+
+    def test_modbus_exception_raises(self):
+        """Raises RuntimeError when device returns a Modbus exception response.
+
+        For count=1 the reader expects exactly 7 bytes.  Build a 7-byte frame
+        with FC=0x83 (error bit set) so the exception check is reached after
+        the length and CRC checks pass.
+        """
+        # 7-byte frame: slave + FC|0x80 + error_code + 2 padding bytes + CRC
+        exc_payload = bytes([0x01, 0x83, 0x02, 0x00, 0x00])
+        crc = _crc16(exc_payload)
+        response = exc_payload + bytes([crc & 0xFF, crc >> 8])
+        port = _make_mock_port(response)
+
+        with pytest.raises(RuntimeError, match="Modbus exception"):
+            _read_registers_raw(port, slave=1, register=0x0100, count=1)
+
+    def test_chunked_response(self):
+        """Handles response arriving in multiple read() chunks."""
+        response = _make_raw_response(slave=1, register_values=[85])
+        # Split into two chunks
+        port = MagicMock()
+        port.read.side_effect = [response[:3], response[3:], b"", b""]
+        port.baudrate = 9600
+
+        values = _read_registers_raw(port, slave=1, register=0x0100, count=1)
+
+        assert values == [85]
+
+
+class TestModbusReaderRawTransport:
+    """Tests for ModbusReader using raw pyserial transport (serial_adapter='uart').
+
+    Avoids the busy-wait timeout in _read_registers_raw by testing at the right
+    layer for each concern:
+
+    * Routing tests  — mock _read_sync_raw / _read_sync_pymodbus directly.
+    * Parsing tests  — call _read_registers() with a plain dict-backed lambda.
+    * Port-open test — patch serial.Serial and mock _read_registers immediately.
+    """
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _dict_read_fn(register_data: dict[int, int]):
+        """Return a read_fn that looks up values from a dict (no serial I/O)."""
+        def read_fn(reg: int, count: int) -> list[int]:
+            if reg in register_data:
+                return [register_data[reg]]
+            raise RuntimeError(f"No data for register 0x{reg:04X}")
+        return read_fn
+
+    @staticmethod
+    def _uart_reader(**kwargs) -> ModbusReader:
+        return ModbusReader(
+            device_path="/dev/ttyAMA5",
+            device_name="rover-test",
+            serial_adapter="uart",
+            slave_address=16,
+            max_retries=1,
+            **kwargs,
+        )
+
+    # ------------------------------------------------------------------
+    # Transport routing
+    # ------------------------------------------------------------------
+
+    def test_uart_adapter_routes_to_raw_transport(self):
+        """serial_adapter='uart' calls _read_sync_raw, not _read_sync_pymodbus."""
+        reader = self._uart_reader()
+        fake_result = {"__client": "ModbusReader/raw", "__serial_adapter": "uart"}
+
+        with patch.object(reader, "_read_sync_raw", return_value=fake_result) as mock_raw, \
+             patch.object(reader, "_read_sync_pymodbus") as mock_pymodbus:
+            result = reader._read_sync()
+
+        mock_raw.assert_called_once()
+        mock_pymodbus.assert_not_called()
+        assert result["__client"] == "ModbusReader/raw"
+
+    def test_usb_adapter_routes_to_pymodbus(self):
+        """serial_adapter='usb' calls _read_sync_pymodbus, not _read_sync_raw."""
+        reader = ModbusReader(
+            device_path="/dev/ttyUSB0",
+            device_name="test",
+            serial_adapter="usb",
+            max_retries=1,
+        )
+        fake_result = {"__client": "ModbusReader/pymodbus", "__serial_adapter": "usb"}
+
+        with patch.object(reader, "_read_sync_pymodbus", return_value=fake_result) as mock_pymodbus, \
+             patch.object(reader, "_read_sync_raw") as mock_raw:
+            result = reader._read_sync()
+
+        mock_pymodbus.assert_called_once()
+        mock_raw.assert_not_called()
+        assert result["__client"] == "ModbusReader/pymodbus"
+
+    # ------------------------------------------------------------------
+    # Register parsing via _read_registers (no serial I/O)
+    # ------------------------------------------------------------------
+
+    def test_parses_battery_data(self):
+        """_read_registers correctly parses battery SOC, voltage, and current."""
+        import time
+        reader = self._uart_reader()
+        data = reader._read_registers(
+            read_fn=self._dict_read_fn(SAMPLE_MODBUS_DATA),
+            start_time=time.perf_counter(),
+            connect_elapsed_ms=0.0,
+            client_label="ModbusReader/raw",
+        )
+        assert data["battery_percentage"] == 85
+        assert data["battery_voltage"] == 13.2
+        assert data["battery_current"] == 3.5
+
+    def test_parses_temperature(self):
+        """_read_registers correctly decodes the combined temperature register."""
+        import time
+        reader = self._uart_reader()
+        data = reader._read_registers(
+            read_fn=self._dict_read_fn(SAMPLE_MODBUS_DATA),
+            start_time=time.perf_counter(),
+            connect_elapsed_ms=0.0,
+            client_label="ModbusReader/raw",
+        )
+        assert data["controller_temperature"] == 25
+        assert data["battery_temperature"] == 20
+
+    def test_parses_solar_data(self):
+        """_read_registers correctly parses PV voltage, current, and power."""
+        import time
+        reader = self._uart_reader()
+        data = reader._read_registers(
+            read_fn=self._dict_read_fn(SAMPLE_MODBUS_DATA),
+            start_time=time.perf_counter(),
+            connect_elapsed_ms=0.0,
+            client_label="ModbusReader/raw",
+        )
+        assert data["pv_voltage"] == 18.5
+        assert data["pv_current"] == 2.8
+        assert data["pv_power"] == 52
+
+    def test_metadata_fields(self):
+        """_read_registers stamps __client and __serial_adapter into the result."""
+        import time
+        reader = self._uart_reader()
+        data = reader._read_registers(
+            read_fn=self._dict_read_fn(SAMPLE_MODBUS_DATA),
+            start_time=time.perf_counter(),
+            connect_elapsed_ms=1.5,
+            client_label="ModbusReader/raw",
+        )
+        assert data["__client"] == "ModbusReader/raw"
+        assert data["__serial_adapter"] == "uart"
+        assert data["__device"] == "rover-test"
+
+    def test_metadata_includes_pins_when_configured(self):
+        """TX/RX GPIO pin numbers appear in metadata when set on the reader."""
+        import time
+        reader = self._uart_reader(uart_tx_pin=12, uart_rx_pin=13)
+        data = reader._read_registers(
+            read_fn=self._dict_read_fn(SAMPLE_MODBUS_DATA),
+            start_time=time.perf_counter(),
+            connect_elapsed_ms=0.0,
+            client_label="ModbusReader/raw",
+        )
+        assert data["__uart_tx_pin"] == 12
+        assert data["__uart_rx_pin"] == 13
+
+    def test_metadata_excludes_pins_when_not_set(self):
+        """Pin metadata keys are absent when no pins are configured."""
+        import time
+        reader = self._uart_reader()
+        data = reader._read_registers(
+            read_fn=self._dict_read_fn(SAMPLE_MODBUS_DATA),
+            start_time=time.perf_counter(),
+            connect_elapsed_ms=0.0,
+            client_label="ModbusReader/raw",
+        )
+        assert "__uart_tx_pin" not in data
+        assert "__uart_rx_pin" not in data
+
+    # ------------------------------------------------------------------
+    # Serial port interaction
+    # ------------------------------------------------------------------
+
+    def test_serial_port_opened_with_correct_params(self):
+        """_read_sync_raw opens serial.Serial with the expected parameters."""
+        import time
+        reader = self._uart_reader()
+        fake_data = {"__client": "ModbusReader/raw", "__serial_adapter": "uart",
+                     "battery_percentage": 85, "__device": "rover-test",
+                     "__connect_ms": 0.0, "__total_ms": 0.0}
+
+        port_mock = MagicMock()
+        serial_cls = MagicMock(return_value=port_mock)
+
+        with patch("pisolar.sensors.renogy.modbus_reader.serial.Serial", serial_cls), \
+             patch.object(reader, "_read_registers", return_value=fake_data):
+            reader._read_sync_raw()
+
+        serial_cls.assert_called_once_with(
+            port="/dev/ttyAMA5",
+            baudrate=9600,
+            bytesize=8,
+            parity="N",
+            stopbits=1,
+            timeout=0.001,
+        )
+        port_mock.close.assert_called_once()
+
+    def test_serial_port_open_failure_raises(self):
+        """RuntimeError wraps SerialException when the port cannot be opened."""
+        import serial as pyserial
+        reader = self._uart_reader()
+
+        with patch(
+            "pisolar.sensors.renogy.modbus_reader.serial.Serial",
+            side_effect=pyserial.SerialException("Port not found"),
+        ):
+            with pytest.raises(RuntimeError, match="Failed to open"):
+                reader._read_sync_raw()
