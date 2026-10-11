@@ -99,3 +99,28 @@ renogy:
         assert settings.renogy.sensors[1].name == "wanderer"
         assert settings.renogy.sensors[1].read_type == "serial"
         assert settings.renogy.sensors[1].device_path == "/dev/ttyUSB0"
+
+    def test_spool_defaults(self, tmp_path: Path):
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text("{}")
+
+        settings = Settings.from_yaml(str(config_file))
+
+        assert settings.spool.enabled is True
+        assert settings.spool.folder == "/var/lib/piSolar/spool"
+        assert settings.spool.min_free_pct == 14.0
+        assert settings.spool.flush_schedule.cron == "*/5 * * * *"
+
+    def test_spool_env_override(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("TEST_SPOOL_FOLDER", "/tmp/custom-spool")
+
+        config_content = """
+spool:
+  folder: !ENV ${TEST_SPOOL_FOLDER:/var/lib/piSolar/spool}
+"""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(config_content)
+
+        settings = Settings.from_yaml(str(config_file))
+
+        assert settings.spool.folder == "/tmp/custom-spool"

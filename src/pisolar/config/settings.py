@@ -7,6 +7,7 @@ from pisolar.config.metrics_config import MetricsConfig
 from pisolar.config.mysql_config import MySQLConfig
 from pisolar.config.rabbitmq_config import RabbitMQConfig
 from pisolar.config.renogy_config import RenogyConfig
+from pisolar.config.spool_config import SpoolConfig
 from pisolar.config.storage_config import StorageConfig
 from pisolar.config.temperature_sensor_config import TemperatureSensorConfig
 
@@ -22,6 +23,7 @@ class Settings(BaseModel):
     storage: StorageConfig = Field(default_factory=StorageConfig)
     rabbitmq: RabbitMQConfig = Field(default_factory=RabbitMQConfig)
     mysql: MySQLConfig = Field(default_factory=MySQLConfig)
+    spool: SpoolConfig = Field(default_factory=SpoolConfig)
 
     @classmethod  # type: ignore[misc]
     def from_yaml(cls, config_path: str) -> "Settings":

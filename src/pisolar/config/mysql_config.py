@@ -28,6 +28,28 @@ class MySQLConfig(BaseModel):
             "Recycle connections after this many seconds " "(avoids stale connections)"
         ),
     )
+    connect_timeout: int = Field(
+        default=5,
+        ge=1,
+        description="Seconds to wait for a new MySQL connection",
+    )
+    read_timeout: int = Field(
+        default=10,
+        ge=1,
+        description="Seconds to wait for read operations on the connection",
+    )
+    write_timeout: int = Field(
+        default=10,
+        ge=1,
+        description="Seconds to wait for write operations on the connection",
+    )
+    offline_retry_seconds: int = Field(
+        default=60,
+        ge=1,
+        description=(
+            "After a connection error, skip direct MySQL writes for this many seconds"
+        ),
+    )
 
     @property
     def masked_url(self) -> str:

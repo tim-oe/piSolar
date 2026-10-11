@@ -13,6 +13,7 @@ Solar system monitoring service for Raspberry Pi. Collects metrics from temperat
 - **YAML Configuration**: Config files with environment variable overrides
 - **External Logging Config**: Python logging dictConfig from YAML with `!ENV` tag support
 - **Event-Driven Architecture**: Pluggable consumers via event bus
+- **MySQL persistence**: Optional MariaDB storage with offline JSON-lines spool
 - **Systemd Service**: Run as a system service
 
 ## Prereguisits 
@@ -69,6 +70,7 @@ pisolar run                              # Start the monitoring service
 pisolar check                            # Check sensor availability
 pisolar read-once                        # Read all sensors once (for testing)
 pisolar show-config                      # Display current configuration
+pisolar flush                            # Drain spooled MySQL rows manually
 pisolar -c config.yaml -l logging.yaml run  # Specify config files
 ```
 

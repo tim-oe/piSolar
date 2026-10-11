@@ -110,6 +110,46 @@ metrics:
   output_dir: /var/lib/pisolar/metrics
 ```
 
+### MySQL persistence
+
+Sensor readings can be written to MariaDB/MySQL via SQLAlchemy. Connection timeouts
+control how quickly a remote database failure is detected:
+
+```yaml
+mysql:
+  enabled: !ENV ${PISOLAR_MYSQL_ENABLED:true}
+  url: !ENV ${PISOLAR_MYSQL_URL:mariadb+mysqlconnector://pisolar:pisolar@localhost:3306/pisolar}
+  pool_size: 5
+  pool_recycle: 3600
+  connect_timeout: 5
+  read_timeout: 10
+  write_timeout: 10
+  offline_retry_seconds: 60
+```
+
+After a connection-class error, direct MySQL writes are skipped for
+``offline_retry_seconds`` and rows are appended to the spool instead.
+
+### Offline spool
+
+When MySQL is unreachable, readings are stored as JSON-lines under
+``{folder}/{table}/{YYYYMMDDTHH}.jsonl``. The spool uses local disk only (not NFS).
+Replay is at-least-once; a crash mid-drain can rarely produce duplicate rows.
+
+```yaml
+spool:
+  enabled: !ENV ${PISOLAR_SPOOL_ENABLED:true}
+  folder: !ENV ${PISOLAR_SPOOL_FOLDER:/var/lib/piSolar/spool}
+  min_free_pct: 14
+  warn_age_hours: 24
+  flush_schedule:
+    cron: !ENV ${PISOLAR_SPOOL_FLUSH_CRON:*/5 * * * *}
+    enabled: !ENV ${PISOLAR_SPOOL_FLUSH_ENABLED:true}
+```
+
+Drain manually with ``pisolar flush``. During ``pisolar run``, a scheduled flush
+job replays spooled rows when the database comes back.
+
 ## Logging Configuration
 
 Logging is configured separately in `logging.yaml` using Python's dictConfig format with `!ENV` tag for environment variable substitution.

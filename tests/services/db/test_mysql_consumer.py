@@ -1,12 +1,15 @@
 """Tests for MySQLConsumer."""
 
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from pisolar.config.mysql_config import MySQLConfig
+from pisolar.config.spool_config import SpoolConfig
 from pisolar.event_bus import EventBus
 from pisolar.sensors.renogy.solar_reading import SolarReading
 from pisolar.sensors.sensor_reading import SensorReading
@@ -32,6 +35,11 @@ def mock_bus():
 
 
 @pytest.fixture
+def spool_config(tmp_path):
+    return SpoolConfig(enabled=True, folder=str(tmp_path / "spool"))
+
+
+@pytest.fixture
 def consumer(engine, mock_bus):
     with (
         patch("pisolar.services.db.mysql_consumer.get_event_bus") as mock_get_bus,
@@ -42,6 +50,19 @@ def consumer(engine, mock_bus):
         mock_get_bus.return_value = mock_bus
         mock_create_engine.return_value = engine
         yield MySQLConsumer(MySQLConfig())
+
+
+@pytest.fixture
+def consumer_with_spool(engine, mock_bus, spool_config):
+    with (
+        patch("pisolar.services.db.mysql_consumer.get_event_bus") as mock_get_bus,
+        patch(
+            "pisolar.services.db.mysql_consumer.create_db_engine"
+        ) as mock_create_engine,
+    ):
+        mock_get_bus.return_value = mock_bus
+        mock_create_engine.return_value = engine
+        yield MySQLConsumer(MySQLConfig(), spool_config)
 
 
 @pytest.fixture
@@ -209,6 +230,168 @@ class TestMySQLConsumerUnknownReading:
         ) as mock_logger:
             consumer._handle_reading(UnknownReading(type="other", name="sensor 1"))
             mock_logger.warning.assert_called_once()
+
+
+class TestMySQLConsumerSpool:
+    def test_connection_error_spools_and_marks_offline(
+        self, consumer_with_spool, spool_config
+    ):
+        reading = SolarReading.from_raw_data(
+            sensor_type="solar", name="rover-40", data=RENOGY_RAW_DATA
+        )
+        with patch.object(Session, "commit", side_effect=OperationalError("", "", "")):
+            consumer_with_spool._handle_reading(reading)
+
+        assert consumer_with_spool._db_state.is_offline()
+        segments = list(
+            (consumer_with_spool._spool.folder / "solar_reading").glob("*.jsonl")
+        )
+        assert len(segments) == 1
+        envelope = json.loads(segments[0].read_text(encoding="utf-8").splitlines()[0])
+        assert envelope["table"] == "solar_reading"
+        assert envelope["data"]["sensor_name"] == "rover-40"
+
+    def test_non_connection_error_does_not_spool(self, consumer_with_spool, engine):
+        reading = SolarReading.from_raw_data(
+            sensor_type="solar", name="rover-40", data=RENOGY_RAW_DATA
+        )
+        with patch.object(Session, "commit", side_effect=RuntimeError("logic bug")):
+            consumer_with_spool._handle_reading(reading)
+
+        assert not consumer_with_spool._db_state.is_offline()
+        assert consumer_with_spool._spool.depth("solar_reading") == 0
+        with Session(engine) as session:
+            assert len(session.execute(select(SolarRecord)).scalars().all()) == 0
+
+    def test_offline_short_circuit_skips_database(
+        self, consumer_with_spool, spool_config
+    ):
+        consumer_with_spool._db_state.mark_offline()
+        reading = SolarReading.from_raw_data(
+            sensor_type="solar", name="rover-40", data=RENOGY_RAW_DATA
+        )
+        with patch.object(Session, "commit") as mock_commit:
+            consumer_with_spool._handle_reading(reading)
+        mock_commit.assert_not_called()
+        assert consumer_with_spool._spool.depth("solar_reading") == 1
+
+    def test_online_transition_submits_flush(self, consumer_with_spool):
+        reading = SolarReading.from_raw_data(
+            sensor_type="solar", name="rover-40", data=RENOGY_RAW_DATA
+        )
+        with patch.object(Session, "commit", side_effect=OperationalError("", "", "")):
+            consumer_with_spool._handle_reading(reading)
+
+        with (
+            patch.object(
+                consumer_with_spool._db_state, "is_offline", return_value=False
+            ),
+            patch.object(consumer_with_spool._flush_executor, "submit") as mock_submit,
+        ):
+            consumer_with_spool._handle_reading(reading)
+        mock_submit.assert_called_once()
+
+    def test_flush_drains_spool_into_database(
+        self, consumer_with_spool, engine, seeded_sensors
+    ):
+        temp = TemperatureReading(
+            type="temperature", name="0000007b409e", sensor_id=1, value=12.3
+        )
+        solar = SolarReading.from_raw_data(
+            sensor_type="solar", name="rover-40", data=RENOGY_RAW_DATA
+        )
+        with patch.object(Session, "commit", side_effect=OperationalError("", "", "")):
+            consumer_with_spool._handle_reading(temp)
+            consumer_with_spool._handle_reading(solar)
+
+        consumer_with_spool.flush()
+
+        with Session(engine) as session:
+            assert len(session.execute(select(TemperatureRecord)).scalars().all()) == 1
+            assert len(session.execute(select(SolarRecord)).scalars().all()) == 1
+        assert consumer_with_spool._spool.depth("solar_reading") == 0
+        assert consumer_with_spool._spool.depth("solar_temperature_reading") == 0
+
+    @pytest.mark.parametrize(
+        "bad_line", ["null", "[]", '{"table":"solar_reading","data":[]}']
+    )
+    def test_flush_quarantines_invalid_envelope(self, consumer_with_spool, bad_line):
+        consumer_with_spool._spool.append("solar_reading", bad_line)
+
+        consumer_with_spool.flush()
+
+        rejected = (
+            consumer_with_spool._spool.folder / "solar_reading" / "rejected.jsonl"
+        )
+        assert rejected.exists()
+        assert consumer_with_spool._spool.depth("solar_reading") == 0
+
+    def test_flush_isolates_bad_row_in_segment(self, consumer_with_spool, engine):
+        valid = TemperatureRecord(
+            sensor_id=1,
+            read_time=TemperatureReading(
+                type="temperature", name="valid", sensor_id=1, value=12.3
+            ).read_time.replace(tzinfo=None),
+            value=12.3,
+        )
+        invalid = TemperatureRecord(
+            sensor_id=None,
+            read_time=valid.read_time,
+            value=9.0,
+        )
+        consumer_with_spool._spool_row(valid)
+        consumer_with_spool._spool_row(invalid)
+
+        consumer_with_spool.flush()
+
+        with Session(engine) as session:
+            rows = session.execute(select(TemperatureRecord)).scalars().all()
+            assert len(rows) == 1
+            assert rows[0].value == pytest.approx(12.3)
+        rejected = (
+            consumer_with_spool._spool.folder
+            / "solar_temperature_reading"
+            / "rejected.jsonl"
+        )
+        assert rejected.exists()
+        assert consumer_with_spool._spool.depth("solar_temperature_reading") == 0
+
+    def test_flush_leaves_draining_on_connection_error(
+        self, consumer_with_spool, engine, seeded_sensors
+    ):
+        reading = TemperatureReading(
+            type="temperature", name="0000007b409e", sensor_id=1, value=9.0
+        )
+        with patch.object(Session, "commit", side_effect=OperationalError("", "", "")):
+            consumer_with_spool._handle_reading(reading)
+
+        with (
+            patch.object(
+                consumer_with_spool,
+                "_health_check",
+                return_value=True,
+            ),
+            patch.object(Session, "commit", side_effect=OperationalError("", "", "")),
+        ):
+            consumer_with_spool.flush()
+
+        assert (
+            len(
+                consumer_with_spool._spool.draining_segments(
+                    "solar_temperature_reading"
+                )
+            )
+            == 1
+        )
+
+    def test_flush_reentrancy_lock(self, consumer_with_spool):
+        consumer_with_spool._flush_lock.acquire()
+        try:
+            with patch.object(consumer_with_spool, "_health_check") as mock_health:
+                consumer_with_spool.flush()
+                mock_health.assert_not_called()
+        finally:
+            consumer_with_spool._flush_lock.release()
 
 
 class TestMySQLConsumerClose:

@@ -6,6 +6,7 @@ Usage:
   pisolar check
   pisolar read_once
   pisolar show_config
+  pisolar flush
 
   see https://click.palletsprojects.com/en/stable/
 """
@@ -82,11 +83,33 @@ def run(ctx: click.Context) -> None:
 
     mysql_consumer: MySQLConsumer | None = None
     if settings.mysql.enabled:
-        mysql_consumer = MySQLConsumer(settings.mysql)
+        mysql_consumer = MySQLConsumer(settings.mysql, settings.spool)
         logger.info("MySQL storage enabled: %s", settings.mysql.masked_url)
 
     metrics_service = MetricsService()
     scheduler = SchedulerService()
+
+    if (
+        mysql_consumer
+        and settings.spool.enabled
+        and settings.spool.flush_schedule.enabled
+    ):
+
+        def mysql_flush() -> None:
+            mysql_consumer.flush()
+
+        scheduler.add_job(
+            mysql_flush,
+            settings.spool.flush_schedule.cron,
+            job_id="mysql_flush",
+        )
+        logger.info(
+            "MySQL spool flush job enabled: schedule=%s",
+            settings.spool.flush_schedule.cron,
+        )
+
+    if mysql_consumer and settings.spool.enabled:
+        mysql_consumer.flush()
 
     if settings.temperature.enabled:
         sensor_configs = [
@@ -203,7 +226,7 @@ def read_once(ctx: click.Context) -> None:
 
     mysql_consumer: MySQLConsumer | None = None
     if settings.mysql.enabled:
-        mysql_consumer = MySQLConsumer(settings.mysql)
+        mysql_consumer = MySQLConsumer(settings.mysql, settings.spool)
         logger.info("MySQL storage enabled: %s", settings.mysql.masked_url)
 
     if settings.storage.enabled:
@@ -313,3 +336,40 @@ def show_config(ctx: click.Context) -> None:
     click.echo(f"    retention_days: {settings.storage.retention_days}")
     click.echo(f"    prune_schedule: {settings.storage.prune_schedule.cron}")
     click.echo(f"    prune_enabled: {settings.storage.prune_schedule.enabled}")
+
+    click.echo("  MySQL:")
+    click.echo(f"    enabled: {settings.mysql.enabled}")
+    click.echo(f"    url: {settings.mysql.masked_url}")
+    click.echo(f"    connect_timeout: {settings.mysql.connect_timeout}")
+    click.echo(f"    offline_retry_seconds: {settings.mysql.offline_retry_seconds}")
+
+    click.echo("  Spool:")
+    click.echo(f"    enabled: {settings.spool.enabled}")
+    click.echo(f"    folder: {settings.spool.folder}")
+    click.echo(f"    min_free_pct: {settings.spool.min_free_pct}")
+    click.echo(f"    warn_age_hours: {settings.spool.warn_age_hours}")
+    click.echo(f"    flush_schedule: {settings.spool.flush_schedule.cron}")
+    click.echo(f"    flush_enabled: {settings.spool.flush_schedule.enabled}")
+
+
+@main.command()
+@click.pass_context
+def flush(ctx: click.Context) -> None:
+    """Drain spooled MySQL rows to the database."""
+    settings: Settings = ctx.obj["settings"]
+    logger = get_logger("cli")
+
+    if not settings.mysql.enabled:
+        click.echo("MySQL is disabled in configuration")
+        sys.exit(1)
+    if not settings.spool.enabled:
+        click.echo("Spool is disabled in configuration")
+        sys.exit(1)
+
+    consumer = MySQLConsumer(settings.mysql, settings.spool)
+    logger.info("Draining MySQL spool from %s", settings.spool.folder)
+    try:
+        consumer.flush()
+    finally:
+        consumer.close()
+    click.echo("Spool flush complete")

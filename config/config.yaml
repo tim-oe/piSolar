@@ -65,3 +65,17 @@ mysql:
   url: !ENV ${PISOLAR_MYSQL_URL:mariadb+mysqlconnector://pisolar:pisolar@localhost:3306/pisolar}
   pool_size: !ENV ${PISOLAR_MYSQL_POOL_SIZE:5}
   pool_recycle: !ENV ${PISOLAR_MYSQL_POOL_RECYCLE:3600}
+  connect_timeout: !ENV ${PISOLAR_MYSQL_CONNECT_TIMEOUT:5}
+  read_timeout: !ENV ${PISOLAR_MYSQL_READ_TIMEOUT:10}
+  write_timeout: !ENV ${PISOLAR_MYSQL_WRITE_TIMEOUT:10}
+  offline_retry_seconds: !ENV ${PISOLAR_MYSQL_OFFLINE_RETRY_SECONDS:60}
+
+# Offline spool for MySQL (local JSON-lines when the database is unreachable)
+spool:
+  enabled: !ENV ${PISOLAR_SPOOL_ENABLED:true}
+  folder: !ENV ${PISOLAR_SPOOL_FOLDER:/var/lib/piSolar/spool}
+  min_free_pct: !ENV ${PISOLAR_SPOOL_MIN_FREE_PCT:14}
+  warn_age_hours: !ENV ${PISOLAR_SPOOL_WARN_AGE_HOURS:24}
+  flush_schedule:
+    cron: !ENV ${PISOLAR_SPOOL_FLUSH_CRON:*/5 * * * *}
+    enabled: !ENV ${PISOLAR_SPOOL_FLUSH_ENABLED:true}
