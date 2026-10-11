@@ -12,12 +12,13 @@ temperature:
   sensors:
     - id: "1"
       address: "0000007b409e"
-    - id: "2"
-      address: "000000b4c0d2"
-    - id: "3"
-      address: "0000007c6850"
-    - id: "4"
-      address: "0000007ba79d"
+# moved to single battery
+#    - id: "2"
+#      address: "000000b4c0d2"
+#    - id: "3"
+#      address: "0000007c6850"
+#    - id: "4"
+#      address: "0000007ba79d"
   schedule:
     # Cron expression: minute hour day month day_of_week
     cron: !ENV ${PISOLAR_TEMPERATURE_CRON:*/5 * * * *}  # Every 5 minutes
