@@ -25,6 +25,9 @@ jobs:
           poetry install
 
       - name: Run tests
+        env:
+          # Skip w1thermsensor's modprobe of w1-gpio/w1-therm during import.
+          W1THERMSENSOR_NO_KERNEL_MODULE: "1"
         run: poetry run test
 
       - name: Upload coverage report

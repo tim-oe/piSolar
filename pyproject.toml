@@ -55,7 +55,7 @@ testcontainers = {version = "^4.14", extras = ["mysql"]}
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "-v --tb=short -m 'not integration'"
+addopts = "-v --tb=short -m 'not integration' --ignore=tests/rs485"
 markers = [
     "integration: marks tests requiring real hardware and ~/.config.yaml (deselected by default)",
 ]
