@@ -30,6 +30,7 @@ pisolar = "pisolar.cli:main"
 lint = "scripts.lint:main"
 format = "scripts.lint:format_code"
 test = "scripts.test:main"
+build-release = "scripts.build_release:main"
 
 [tool.poetry]
 packages = [
